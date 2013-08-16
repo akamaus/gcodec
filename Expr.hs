@@ -13,8 +13,6 @@ data Expr t where
   Not :: Expr Bool -> Expr Bool
   Read :: Cell t -> Expr t
 
-deriving Show
-
 
 instance Num t => Num (Expr t) where
   fromInteger = NumE . fromInteger

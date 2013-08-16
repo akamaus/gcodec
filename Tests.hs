@@ -1,9 +1,9 @@
-import GCode
+import GOperator
 
-import System.IO
+import Data.ByteString.Lazy.Char8 as S
+import Blaze.ByteString.Builder
 
-prog1 = GAssign (GCell 101) (G_Add (GCell 102) (G_Int 42))
+prog1 = GAssign (GCell 101) (G_Add (G_Read $ GCell 102) (G_Int 42))
 
 main = do
-  hPutBuilder stdout $ gopGen prog1
-  
+  S.putStrLn $ toLazyByteString $ gopGen prog1
