@@ -1,16 +1,13 @@
 {-# LANGUAGE GADTs #-}
-module Types where
+module GCode where
 
 import Control.Monad.RWS
 
 
 type GCode = RWS Int Int Int
-{-
-data GOperator where
-  Code CodeType 
--}
 
 data Cell t = CellSym String
+
 
 data Expr t where
   BoolE :: Bool -> Expr Bool

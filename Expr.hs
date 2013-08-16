@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs #-}
-module Types where
+module Expr where
 
 
 data Cell t = CellSym String
