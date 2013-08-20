@@ -2,9 +2,10 @@
 module Expr where
 
 import qualified Data.ByteString as S
+import Data.Word
 
 type Symbol = S.ByteString
-data Cell t = CellSym Symbol deriving (Eq, Ord, Show)
+data Cell t = Cell Word deriving (Eq, Ord, Show)
 
 data Expr t where
   BoolE :: Bool -> Expr Bool

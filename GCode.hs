@@ -24,15 +24,20 @@ mkLabels [''GCompileState]
 init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = S.empty }
 gcodeGen gcode = RWS.runRWS gcode () init_cs
 
+allocate :: Maybe GCell -> GCode (Cell t)
+allocate mgcell = do
+  cs <- RWS.get
+  let (GCell n, vm) = (vm_allocate mgcell) $ get gsc_vars cs
+  RWS.put $ set gsc_vars vm cs
+  return $ Cell n
+
 -- creates a variable with a given name
-newVar :: Symbol -> GCode (Cell t)
-newVar sym = do RWS.modify $ modify gsc_vars (vm_allocate sym Nothing)
-                return $ CellSym sym
+newVar :: GCode (Cell t)
+newVar = allocate Nothing
 
 -- gives a name to a cell
-nameCell :: Symbol -> Word -> GCode (Cell t)
-nameCell sym cell_num = do RWS.modify $ modify gsc_vars (vm_allocate sym $ Just $ GCell cell_num)
-                           return $ CellSym sym
+nameCell :: Word -> GCode (Cell t)
+nameCell cell_num = allocate (Just $ GCell cell_num)
 
 gIf :: Expr Bool -> GCode () -> GCode () -> GCode ()
 gIf = undefined
