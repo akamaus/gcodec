@@ -7,6 +7,9 @@ import Data.Word
 type Symbol = S.ByteString
 data Cell t = Cell Word deriving (Eq, Ord, Show)
 
+gRead :: Cell t -> Expr t
+gRead = Read
+
 data Expr t where
   BoolE :: Bool -> Expr Bool
   NumE :: Num t => t -> Expr t

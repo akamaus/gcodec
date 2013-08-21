@@ -50,3 +50,11 @@ while = undefined
 
 goto :: Label -> GCode ()
 goto = undefined
+
+label :: GCode Label
+label = undefined
+
+frame :: [Instruction] -> GCode ()
+frame = undefined
+
+data Instruction = G Int | M Int | X (Expr Double) | Y (Expr Double) | Z (Expr Double)
