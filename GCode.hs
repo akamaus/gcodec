@@ -1,8 +1,9 @@
-{-# LANGUAGE GADTs, TemplateHaskell #-}
+{-# LANGUAGE GADTs, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
 module GCode where
 
 import Expr
-import GOperator
+import qualified GOperator as G
+import GOperator (GOperator)
 import VarMap
 
 import Data.Label
@@ -15,8 +16,8 @@ type GCode = RWS.RWS () GOperator GCompileState
 
 data GCompileState = GCS {
   _gsc_vars :: VarMap, -- mapping from symbolic variables to numeric memory cells
-  _gsc_ref_labels :: S.Set Label, -- labels referenced from generated code
-  _gsc_gen_labels :: S.Set Label  -- already generated labels
+  _gsc_ref_labels :: S.Set G.Label, -- labels referenced from generated code
+  _gsc_gen_labels :: S.Set G.Label  -- already generated labels
   } deriving Show
 
 mkLabels [''GCompileState]
@@ -24,10 +25,10 @@ mkLabels [''GCompileState]
 init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = S.empty }
 gcodeGen gcode = RWS.runRWS gcode () init_cs
 
-allocate :: Maybe GCell -> GCode (Cell t)
+allocate :: Maybe G.GCell -> GCode (Cell t)
 allocate mgcell = do
   cs <- RWS.get
-  let (GCell n, vm) = (vm_allocate mgcell) $ get gsc_vars cs
+  let (G.GCell n, vm) = (vm_allocate mgcell) $ get gsc_vars cs
   RWS.put $ set gsc_vars vm cs
   return $ Cell n
 
@@ -37,7 +38,7 @@ newVar = allocate Nothing
 
 -- gives a name to a cell
 nameCell :: Word -> GCode (Cell t)
-nameCell cell_num = allocate (Just $ GCell cell_num)
+nameCell cell_num = allocate (Just $ G.GCell cell_num)
 
 gIf :: Expr Bool -> GCode () -> GCode () -> GCode ()
 gIf = undefined
@@ -48,13 +49,34 @@ gIf = undefined
 while :: Expr Bool -> GCode () -> GCode ()
 while = undefined
 
-goto :: Label -> GCode ()
+goto :: G.Label -> GCode ()
 goto = undefined
 
-label :: GCode Label
+label :: GCode G.Label
 label = undefined
 
 frame :: [Instruction] -> GCode ()
 frame = undefined
 
 data Instruction = G Int | M Int | X (Expr Double) | Y (Expr Double) | Z (Expr Double)
+
+class CInstruction a where
+  fG :: Int -> a
+  fM :: Int -> a
+  fX :: Expr Double -> a
+  fY :: Expr Double -> a
+  fZ :: Expr Double -> a
+
+instance CInstruction Instruction where
+  fG = G
+  fM = M
+  fX = X
+  fY = Y
+  fZ = Z
+
+instance CInstruction (GCode ()) where
+  fG i = frame [fG i]
+  fM i = frame [fM i]
+  fX expr = frame [fX expr]
+  fY expr = frame [fY expr]
+  fZ expr = frame [fZ expr]
