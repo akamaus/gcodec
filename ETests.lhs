@@ -18,7 +18,7 @@
 > prog1 :: GCode ()
 > prog1 = do
 
->   start <- label
+>   label "start"
 
 Программа начинается с метки start. Хорошее начало.
 
@@ -40,12 +40,12 @@ frame группирует инструкции в одну транзакцию
 >   var100 #= (gRead var100 - 5)
 
 >   gIf (gRead var100 #> 0)
->     (goto start)
+>     (goto "start")
 >     (return ())
 
 - В gIf левая и правая ветка группируется скобочками, что не очень удобно
 
->   end <- label
+>   label "end"
 >   frame [M 100]
 
 А вот пример того, что frame может задолбать на одиночных инструкциях.
@@ -57,7 +57,7 @@ frame группирует инструкции в одну транзакцию
 > prog2 :: GCode ()
 > prog2 = do
 
->   start <- label
+>   label "start"
 >   var101 <- nameCell 101
 >   var100 <- nameCell 100
 >   var101 #= (gRead var101 + 42)
@@ -67,9 +67,9 @@ frame группирует инструкции в одну транзакцию
 
 >   var100 #= (gRead var100 - 5)
 >   gIf (gRead var100 #> 0)
->     (goto start)
+>     (goto "start")
 >     (return ())
->   end <- label 
+>   label "end"
 
 fM можно вставлять без frame
 

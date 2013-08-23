@@ -6,11 +6,14 @@ import qualified GOperator as G
 import GOperator (GOperator)
 import VarMap
 
+import Control.Applicative
 import Data.Label
+import qualified Data.Label.PureM as L
 import Data.Word
 import Text.Printf
 import qualified Control.Monad.RWS as RWS
 import qualified Data.Set as S
+import Control.Monad
 
 type GCode = RWS.RWS () GOperator GCompileState
 
@@ -23,13 +26,23 @@ data GCompileState = GCS {
 mkLabels [''GCompileState]
 
 init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = S.empty }
-gcodeGen gcode = RWS.runRWS gcode () init_cs
+
+-- Generate and print the code
+gcodeGen gcode = do
+  let (ret, st, code) = RWS.runRWS gcode () init_cs
+      ref = get gsc_ref_labels st
+      gen = get gsc_gen_labels st
+      unused_lbls = S.difference gen ref
+      unknown_lbls = S.difference ref gen
+  when (not $ S.null unused_lbls) $ printf "Warning, unused labels: %s\n\n" (show $ S.toList unused_lbls)
+  case (not $ S.null unknown_lbls) of
+    True -> printf "Error, unknown labels: %s\n" (show $ S.toList unknown_lbls)
+    False -> G.putGOps code
 
 allocate :: Maybe G.GCell -> GCode (Cell t)
 allocate mgcell = do
-  cs <- RWS.get
-  let (G.GCell n, vm) = (vm_allocate mgcell) $ get gsc_vars cs
-  RWS.put $ set gsc_vars vm cs
+  (G.GCell n, vm) <- (vm_allocate mgcell) <$> L.gets gsc_vars
+  L.puts gsc_vars vm
   return $ Cell n
 
 -- creates a variable with a given name
@@ -49,11 +62,22 @@ gIf = undefined
 while :: Expr Bool -> GCode () -> GCode ()
 while = undefined
 
-goto :: G.Label -> GCode ()
-goto = undefined
+-- Generates a goto operator
+goto :: String -> GCode ()
+goto lbl_str = do
+  let lbl = G.mkLabel lbl_str
+  L.modify gsc_ref_labels $ S.insert lbl
+  RWS.tell $ G.GGoto lbl
 
-label :: GCode G.Label
-label = undefined
+-- Creates a label at given point
+label :: String -> GCode ()
+label lbl_str = do
+  let lbl = G.mkLabel lbl_str
+  labels <- L.gets gsc_gen_labels
+  case S.member lbl labels of
+    False -> do L.puts gsc_gen_labels $ S.insert lbl labels
+                RWS.tell $ G.GLabel lbl
+    True -> error $ printf "labels must be unique, but %s is already defined" lbl_str
 
 frame :: [Instruction] -> GCode ()
 frame = undefined

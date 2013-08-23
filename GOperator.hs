@@ -2,12 +2,13 @@
 module  GOperator where
 
 import Blaze.ByteString.Builder
-import Blaze.ByteString.Builder.Char.Utf8
+import Blaze.ByteString.Builder.Char.Utf8(fromChar, fromShow)
 import Control.Monad.RWS
 import Data.List
 import Data.Maybe
 import Data.Word
 import qualified Data.ByteString as S
+import qualified Data.ByteString.Lazy.Char8 as LS
 
 -- AST for program in ISO7
 data GOperator = GOps [GOperator] | GLabel Label | GAssign GCell GExpr
@@ -21,6 +22,8 @@ instance Monoid GOperator where
   mappend op (GOps lst) = GOps (op:lst)
 
 type Label = S.ByteString
+mkLabel :: String -> Label
+mkLabel = S.pack . map (fromIntegral . fromEnum)
 
 data GInstruction = G Int | M Int | X GExpr | Y GExpr | Z GExpr deriving Show
 
@@ -56,3 +59,6 @@ bracket s = bs "[ " <> s <> bs " ]"
 fromCell (GCell n) = fromChar '#' <> fromShow n
 bs = fromByteString
 endl = fromChar '\n'
+
+putGOps :: GOperator -> IO ()
+putGOps g = LS.putStr $ toLazyByteString $ gopGen g

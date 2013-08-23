@@ -2,9 +2,6 @@
 
 import GOperator
 
-import Data.ByteString.Lazy.Char8 as S
-import Blaze.ByteString.Builder
-
 prog1 = GOps
   [ GLabel "start"
   , GAssign (GCell 101) (G_Add (G_Read $ GCell 101) (G_Int 42))
@@ -18,4 +15,4 @@ prog1 = GOps
   ]
 
 main = do
-  S.putStrLn $ toLazyByteString $ gopGen prog1
+  putGOps prog1
