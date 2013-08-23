@@ -85,22 +85,22 @@ frame = error "frame undefined"
 data Instruction = G Int | M Int | X (Expr Double) | Y (Expr Double) | Z (Expr Double)
 
 class CInstruction a where
-  fG :: Int -> a
-  fM :: Int -> a
-  fX :: Expr Double -> a
-  fY :: Expr Double -> a
-  fZ :: Expr Double -> a
+  g :: Int -> a
+  m :: Int -> a
+  x :: Expr Double -> a
+  y :: Expr Double -> a
+  z :: Expr Double -> a
 
 instance CInstruction Instruction where
-  fG = G
-  fM = M
-  fX = X
-  fY = Y
-  fZ = Z
+  g = G
+  m = M
+  x = X
+  y = Y
+  z = Z
 
 instance CInstruction (GCode ()) where
-  fG i = frame [fG i]
-  fM i = frame [fM i]
-  fX expr = frame [fX expr]
-  fY expr = frame [fY expr]
-  fZ expr = frame [fZ expr]
+  g i = frame [g i]
+  m i = frame [m i]
+  x expr = frame [x expr]
+  y expr = frame [y expr]
+  z expr = frame [z expr]
