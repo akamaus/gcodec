@@ -54,13 +54,13 @@ nameCell :: Word -> GCode (Cell t)
 nameCell cell_num = allocate (Just $ G.GCell cell_num)
 
 gIf :: Expr Bool -> GCode () -> GCode () -> GCode ()
-gIf = undefined
+gIf = error "gIf undefined"
 
 (#=) :: Cell a -> Expr a -> GCode ()
-(#=) = undefined
+(#=) = error "#= undefined"
 
 while :: Expr Bool -> GCode () -> GCode ()
-while = undefined
+while = error "while undefined"
 
 -- Generates a goto operator
 goto :: String -> GCode ()
@@ -80,7 +80,7 @@ label lbl_str = do
     True -> error $ printf "labels must be unique, but %s is already defined" lbl_str
 
 frame :: [Instruction] -> GCode ()
-frame = undefined
+frame = error "frame undefined"
 
 data Instruction = G Int | M Int | X (Expr Double) | Y (Expr Double) | Z (Expr Double)
 
