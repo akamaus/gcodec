@@ -14,7 +14,7 @@ data VarMap = VarMap { _vm_free :: S.Set GCell} deriving Show
 
 mkLabels [''VarMap]
 
-empty_vm = VarMap { _vm_free = S.fromList $ map GCell [1..10] }
+empty_vm = VarMap { _vm_free = S.fromList $ map GCell [100..500] }
 
 vm_allocate :: Maybe GCell -> VarMap -> (GCell, VarMap)
 vm_allocate mcell vm = let

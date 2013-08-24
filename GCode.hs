@@ -43,6 +43,7 @@ saving l m = do
   st <- L.gets l
   res <- m
   L.puts l st
+  return res
 
 -- Generates a code block and returns it
 local_block :: GCode () -> GCode GOperator
@@ -77,19 +78,25 @@ allocate mgcell = do
   L.puts gsc_vars vm
   return $ Cell c
 
--- creates a variable with a given name
+-- Creates a variable with a given name
 newVar :: GCode (Cell t)
 newVar = allocate Nothing
 
--- gives a name to a cell
+-- Gives a name to a cell
 nameCell :: Word -> GCode (Cell t)
 nameCell cell_num = allocate (Just $ G.GCell cell_num)
 
+-- GCode instructions
+-- emits If
 gIf :: Expr Bool -> GCode () -> GCode ()
-gIf p c = undefined --RWS.tell $ G.GIf (eval p) 
+gIf pred branch = do
+  let gp = eval pred
+  code <- saving gsc_vars $ local_block branch
+  gen $ G.GIf gp code
 
+-- emits Assignment
 (#=) :: Cell a -> Expr a -> GCode ()
-(#=) = error "#= undefined"
+(#=) c e = gen $ G.GAssign (unCell c) (eval e)
 
 while :: Expr Bool -> GCode () -> GCode ()
 while = error "while undefined"
