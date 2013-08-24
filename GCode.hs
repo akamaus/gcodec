@@ -79,10 +79,8 @@ label lbl_str = do
                 RWS.tell $ G.GLabel lbl
     True -> error $ printf "labels must be unique, but %s is already defined" lbl_str
 
-frame :: [Instruction] -> GCode ()
+frame :: [G.GInstruction] -> GCode ()
 frame = error "frame undefined"
-
-data Instruction = G Int | M Int | X (Expr Double) | Y (Expr Double) | Z (Expr Double)
 
 class CInstruction a where
   g :: Int -> a
@@ -91,12 +89,12 @@ class CInstruction a where
   y :: Expr Double -> a
   z :: Expr Double -> a
 
-instance CInstruction Instruction where
-  g = G
-  m = M
-  x = X
-  y = Y
-  z = Z
+instance CInstruction G.GInstruction where
+  g = G.G
+  m = G.M
+  x = G.X
+  y = G.Y
+  z = G.Z
 
 instance CInstruction (GCode ()) where
   g i = frame [g i]
