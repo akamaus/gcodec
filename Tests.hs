@@ -29,6 +29,6 @@ hcode_prog1 = do
 
 main = do
   putStrLn "***** GCode example: \n\n"
-  putGOps gcode_prog1
+  putGOps id gcode_prog1
   putStrLn "\n***** HCode example: \n\n"
   gcodeGen hcode_prog1

@@ -4,6 +4,7 @@ module  GOperator where
 import Blaze.ByteString.Builder
 import Blaze.ByteString.Builder.Char.Utf8(fromChar, fromShow)
 import Control.Monad.RWS
+import Control.Monad.Reader
 import Data.List
 import Data.Maybe
 import Data.Word
@@ -35,13 +36,19 @@ data GExpr = G_Add GExpr GExpr | G_Sub GExpr GExpr
            | G_Gt GExpr GExpr | G_Eq GExpr GExpr | G_And GExpr GExpr | G_Not GExpr
            | G_Int Int | G_Float Float | G_Read GCell deriving Show
 
-gopGen :: GOperator -> Builder
-gopGen (GOps ops) = mconcat (map gopGen ops) <> endl
-gopGen (GAssign cell expr) = fromCell cell <> bs " = " <> gexprGen expr <> endl
-gopGen (GGoto label) = bs "GOTO " <> bs label
-gopGen (GLabel label) = bs label <> bs ": "
-gopGen (GIf cond branch) = bs "IF " <> gexprGen cond <> bs " THEN " <> gopGen branch <> endl
-gopGen (GFrame codes) = mconcat (intersperse (fromChar ' ') $ map ginstrGen codes) <> endl
+type GopGen = Reader (Label -> Label)
+
+gopGen :: GOperator -> GopGen Builder
+gopGen (GOps ops) = do cs <- mapM gopGen ops
+                       return $ mconcat cs <> endl
+gopGen (GAssign cell expr) = return $ fromCell cell <> bs " = " <> gexprGen expr <> endl
+gopGen (GGoto label) = do trans <- ask
+                          return $ bs "GOTO " <> bs (trans label)
+gopGen (GLabel label) = do trans <- ask
+                           return $ bs (trans label) <> bs ": "
+gopGen (GIf cond branch) = do code <- gopGen branch
+                              return $ bs "IF " <> gexprGen cond <> bs " THEN " <> code <> endl
+gopGen (GFrame codes) = return $ mconcat (intersperse (fromChar ' ') $ map ginstrGen codes) <> endl
 
 gexprGen (G_Add e1 e2) = bracket $ gexprGen e1 <> bs " + " <> gexprGen e2
 gexprGen (G_Sub e1 e2) = bracket $ gexprGen e1 <> bs " - " <> gexprGen e2
@@ -62,5 +69,5 @@ fromCell (GCell n) = fromChar '#' <> fromShow n
 bs = fromByteString
 endl = fromChar '\n'
 
-putGOps :: GOperator -> IO ()
-putGOps g = LS.putStr $ toLazyByteString $ gopGen g
+putGOps :: (Label -> Label) -> GOperator -> IO ()
+putGOps label_trans g = LS.putStr $ toLazyByteString $ runReader (gopGen g) label_trans

@@ -8,13 +8,15 @@ import GOperator (GOperator)
 import VarMap
 
 import Control.Applicative
+import Control.Monad
 import Data.Label
-import qualified Data.Label.PureM as L
+import Data.List
+import Data.Maybe
 import Data.Word
 import Text.Printf
 import qualified Control.Monad.RWS as RWS
+import qualified Data.Label.PureM as L
 import qualified Data.Set as S
-import Control.Monad
 
 type CompileResults = ([Warning],[Error],GOperator)
 type Warning = String
@@ -30,13 +32,13 @@ gen c = RWS.tell (RWS.mempty, RWS.mempty, c         )
 data GCompileState = GCS {
   _gsc_vars :: VarMap, -- mapping from symbolic variables to numeric memory cells
   _gsc_ref_labels :: S.Set G.Label, -- labels referenced from generated code
-  _gsc_gen_labels :: S.Set G.Label  -- already generated labels
+  _gsc_gen_labels :: [G.Label]  -- already generated labels
   } deriving Show
 
 mkLabels [''GCompileState]
 
 -- Init compiler state
-init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = S.empty }
+init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [] }
 
 -- Runs a computation storing a given projection of state
 saving l m = do
@@ -53,7 +55,7 @@ local_block = liftM snd . RWS.censor (\(w,e,c) -> (w,e,RWS.mempty)) . RWS.listen
 check_labels :: GCode ()
 check_labels = do
   ref <- L.gets gsc_ref_labels
-  gen <- L.gets gsc_gen_labels
+  gen <- S.fromList <$> L.gets gsc_gen_labels
   let unused_lbls = S.difference gen ref
       unknown_lbls = S.difference ref gen
   mapM_ (\lbl -> warn $ printf "Unused label: %s" (show lbl)) (S.toList unused_lbls)
@@ -65,7 +67,9 @@ gcodeGen gcode = do
   when (not $ null warns) $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
     True -> printf "Errors:\n%s\n" $ unlines errs
-    False -> G.putGOps code
+    False -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (G.mkLabel . printf "N%04d") [10 :: Int,20 ..])
+                    label_renamer n = fromMaybe (error "PANIC: label renamer can't find a label") $ lookup n label_list
+                G.putGOps label_renamer code
 
 -- *****************
 --  EDSL primitives
@@ -113,8 +117,8 @@ label :: String -> GCode ()
 label lbl_str = do
   let lbl = G.mkLabel lbl_str
   labels <- L.gets gsc_gen_labels
-  case S.member lbl labels of
-    False -> do L.puts gsc_gen_labels $ S.insert lbl labels
+  case elem lbl labels of
+    False -> do L.puts gsc_gen_labels (lbl:labels)
                 gen $ G.GLabel lbl
     True -> error $ printf "labels must be unique, but %s is already defined" lbl_str
 
