@@ -10,7 +10,6 @@ gcode_prog1 = GOps
   , GAssign (GCell 100) (G_Sub (G_Read $ GCell 100) (G_Int 5))
   , GIf (G_Gt (G_Read (GCell 100)) (G_Int 0))
       (GGoto "start")
-      Nothing
   , GLabel "end"
   , GFrame [M 100]
   ]
@@ -25,7 +24,6 @@ hcode_prog1 = do
   var100 #= (gRead var100 - 5)
   gIf (gRead var100 #> 0)
     (goto "start")
-    (return ())
   label "end"
   m 100
 

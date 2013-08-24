@@ -12,7 +12,7 @@ import qualified Data.ByteString.Lazy.Char8 as LS
 
 -- AST for program in ISO7
 data GOperator = GOps [GOperator] | GLabel Label | GAssign GCell GExpr
-               | GIf GExpr GOperator (Maybe GOperator) | GWhile GExpr GOperator | GGoto Label
+               | GIf GExpr GOperator | GWhile GExpr GOperator | GGoto Label
                | GFrame [GInstruction] deriving Show
 
 instance Monoid GOperator where
@@ -40,7 +40,7 @@ gopGen (GOps ops) = mconcat (map gopGen ops) <> endl
 gopGen (GAssign cell expr) = fromCell cell <> bs " = " <> gexprGen expr <> endl
 gopGen (GGoto label) = bs "GOTO " <> bs label
 gopGen (GLabel label) = bs label <> bs ": "
-gopGen (GIf cond branch1 mbranch2) = bs "IF " <> gexprGen cond <> bs " THEN " <> gopGen branch1 <> maybe mempty (\b2 -> bs " ELSE " <> gopGen b2) mbranch2 <> endl
+gopGen (GIf cond branch) = bs "IF " <> gexprGen cond <> bs " THEN " <> gopGen branch <> endl
 gopGen (GFrame codes) = mconcat (intersperse (fromChar ' ') $ map ginstrGen codes) <> endl
 
 gexprGen (G_Add e1 e2) = bracket $ gexprGen e1 <> bs " + " <> gexprGen e2

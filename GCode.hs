@@ -85,8 +85,8 @@ newVar = allocate Nothing
 nameCell :: Word -> GCode (Cell t)
 nameCell cell_num = allocate (Just $ G.GCell cell_num)
 
-gIf :: Expr Bool -> GCode () -> GCode () -> GCode ()
-gIf p c2 c1 = undefined --RWS.tell $ G.GIf (eval p) 
+gIf :: Expr Bool -> GCode () -> GCode ()
+gIf p c = undefined --RWS.tell $ G.GIf (eval p) 
 
 (#=) :: Cell a -> Expr a -> GCode ()
 (#=) = error "#= undefined"
