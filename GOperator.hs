@@ -8,12 +8,13 @@ import Control.Monad.Reader
 import Data.List
 import Data.Maybe
 import Data.Word
+import Text.Printf
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy.Char8 as LS
 
 -- AST for program in ISO7
 data GOperator = GOps [GOperator] | GLabel Label | GAssign GCell GExpr
-               | GIf GExpr GOperator | GWhile GExpr GOperator | GGoto Label
+               | GIf GExpr GOperator | GWhile Int GExpr GOperator | GGoto Label
                | GFrame [GInstruction] deriving Show
 
 instance Monoid GOperator where
@@ -21,6 +22,7 @@ instance Monoid GOperator where
   mappend (GOps lst1) (GOps lst2) = GOps (lst1 ++ lst2)
   mappend (GOps lst) op = GOps (lst ++ [op])
   mappend op (GOps lst) = GOps (op:lst)
+  mappend op1 op2 = GOps [op1, op2] -- error $ printf "can't sequence %s and %s" (show op1) (show op2)
 
 type Label = S.ByteString
 mkLabel :: String -> Label
@@ -40,14 +42,18 @@ type GopGen = Reader (Label -> Label)
 
 gopGen :: GOperator -> GopGen Builder
 gopGen (GOps ops) = do cs <- mapM gopGen ops
-                       return $ mconcat cs <> endl
+                       return $ mconcat cs
 gopGen (GAssign cell expr) = return $ fromCell cell <> bs " = " <> gexprGen expr <> endl
 gopGen (GGoto label) = do trans <- ask
-                          return $ bs "GOTO " <> bs (trans label)
+                          return $ bs "GOTO " <> bs (trans label) <> endl
 gopGen (GLabel label) = do trans <- ask
                            return $ bs (trans label) <> bs ": "
 gopGen (GIf cond branch) = do code <- gopGen branch
                               return $ bs "IF " <> gexprGen cond <> bs " THEN " <> code <> endl
+gopGen (GWhile k cond body) = do code <- gopGen body
+                                 return $ bs "WHILE " <> gexprGen cond <> bs " DO" <> fromShow k <> endl
+                                   <> code
+                                   <> bs "END" <> fromShow k <> endl
 gopGen (GFrame codes) = return $ mconcat (intersperse (fromChar ' ') $ map ginstrGen codes) <> endl
 
 gexprGen (G_Add e1 e2) = bracket $ gexprGen e1 <> bs " + " <> gexprGen e2

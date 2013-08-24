@@ -21,8 +21,9 @@ import qualified Data.Set as S
 type CompileResults = ([Warning],[Error],GOperator)
 type Warning = String
 type Error = String
+type WhileDepth = Int
 
-type GCode = RWS.RWS () CompileResults GCompileState
+type GCode = RWS.RWS WhileDepth CompileResults GCompileState
 
 -- Helpers for genting warnings, errors and code
 warn w = RWS.tell ([w],        RWS.mempty, RWS.mempty)
@@ -63,7 +64,7 @@ check_labels = do
 
 -- Generates a code and prints it on stdout
 gcodeGen gcode = do
-  let (_, st, (warns, errs, code)) = RWS.runRWS (gcode >> check_labels) () init_cs
+  let (_, st, (warns, errs, code)) = RWS.runRWS (gcode >> check_labels) 1 init_cs
   when (not $ null warns) $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
     True -> printf "Errors:\n%s\n" $ unlines errs
@@ -103,7 +104,12 @@ gIf pred branch = do
 (#=) c e = gen $ G.GAssign (unCell c) (eval e)
 
 while :: Expr Bool -> GCode () -> GCode ()
-while = error "while undefined"
+while cond body = do
+  depth <- RWS.ask
+  when (depth > 3) $ warn $ printf "Generating while of depth %d" depth
+  let expr = eval cond
+  code <- RWS.local (+1) $ saving gsc_vars $ local_block body
+  gen $ G.GWhile depth expr code
 
 -- Generates a goto operator
 goto :: String -> GCode ()

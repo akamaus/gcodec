@@ -27,8 +27,28 @@ hcode_prog1 = do
   label "end"
   m 100
 
+hcode_prog2 :: GCode ()
+hcode_prog2 = do
+  let safe = 20
+      step = 15
+  frame [g 100, z safe]
+  cur_x <- newVar
+  cur_y <- newVar
+  count <- newVar
+  while (100 #> gRead cur_x) $ do
+    while (200 #> gRead cur_y) $ do
+      count #= (gRead count + 1)
+      frame [g 100, x $ gRead cur_x, y $ gRead cur_y]
+      frame [g 101, z 0]
+      frame [g 100, z 20]
+      cur_x #= (gRead cur_x + step)
+    cur_y #= (gRead cur_y + step)
+
 main = do
   putStrLn "***** GCode example: \n\n"
   putGOps id gcode_prog1
   putStrLn "\n***** HCode example: \n\n"
   gcodeGen hcode_prog1
+
+  putStrLn "\n***** HCode example2: \n\n"
+  gcodeGen hcode_prog2
