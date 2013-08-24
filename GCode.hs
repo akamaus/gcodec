@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
-module GCode where
+module GCode(module GCode,
+             gRead, (#>)) where
 
 import Expr
 import qualified GOperator as G
@@ -41,9 +42,9 @@ gcodeGen gcode = do
 
 allocate :: Maybe G.GCell -> GCode (Cell t)
 allocate mgcell = do
-  (G.GCell n, vm) <- (vm_allocate mgcell) <$> L.gets gsc_vars
+  (c@(G.GCell n), vm) <- (vm_allocate mgcell) <$> L.gets gsc_vars
   L.puts gsc_vars vm
-  return $ Cell n
+  return $ Cell c
 
 -- creates a variable with a given name
 newVar :: GCode (Cell t)
@@ -92,9 +93,9 @@ class CInstruction a where
 instance CInstruction G.GInstruction where
   g = G.G
   m = G.M
-  x = G.X
-  y = G.Y
-  z = G.Z
+  x = G.X . eval
+  y = G.Y . eval
+  z = G.Z . eval
 
 instance CInstruction (GCode ()) where
   g i = frame [g i]

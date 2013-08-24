@@ -31,7 +31,9 @@ newtype GCell = GCell Word deriving (Eq, Ord, Show)
 
 
 -- AST of concrete expression in ISO7
-data GExpr = G_Add GExpr GExpr | G_Sub GExpr GExpr | G_GT GExpr GExpr | G_Eq GExpr GExpr | G_Int Int | G_Float Float | G_Read GCell deriving Show
+data GExpr = G_Add GExpr GExpr | G_Sub GExpr GExpr
+           | G_Gt GExpr GExpr | G_Eq GExpr GExpr | G_And GExpr GExpr | G_Not GExpr
+           | G_Int Int | G_Float Float | G_Read GCell deriving Show
 
 gopGen :: GOperator -> Builder
 gopGen (GOps ops) = mconcat (map gopGen ops) <> endl
@@ -43,7 +45,7 @@ gopGen (GFrame codes) = mconcat (intersperse (fromChar ' ') $ map ginstrGen code
 
 gexprGen (G_Add e1 e2) = bracket $ gexprGen e1 <> bs " + " <> gexprGen e2
 gexprGen (G_Sub e1 e2) = bracket $ gexprGen e1 <> bs " - " <> gexprGen e2
-gexprGen (G_GT e1 e2) = bracket $ gexprGen e1 <> bs " GT " <> gexprGen e2
+gexprGen (G_Gt e1 e2) = bracket $ gexprGen e1 <> bs " GT " <> gexprGen e2
 gexprGen (G_Eq e1 e2) = bracket $ gexprGen e1 <> bs " EQ " <> gexprGen e2
 gexprGen (G_Read cell) = fromCell cell
 gexprGen (G_Int i) = fromShow i
