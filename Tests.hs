@@ -32,9 +32,9 @@ hcode_prog2 = do
   let safe = 20
       step = 15
   frame [g 100, z safe]
-  cur_x <- newVar
-  cur_y <- newVar
-  count <- newVar
+  cur_x <- newVar 5
+  cur_y <- newVar 5
+  count <- newVar 0
   while (100 #> gRead cur_x) $ do
     while (200 #> gRead cur_y) $ do
       count #= (gRead count + 1)

@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
 module GCode(module GCode,
-             gRead, (#>)) where
+             Cell, Expr, gRead, (#>)) where
 
 import Expr
 import qualified GOperator as G
@@ -84,8 +84,11 @@ allocate mgcell = do
   return $ Cell c
 
 -- Creates a variable with a given name
-newVar :: GCode (Cell t)
-newVar = allocate Nothing
+newVar :: Expr t -> GCode (Cell t)
+newVar v0 = do n <- allocate Nothing
+               n #= v0
+               return n
+
 
 -- Gives a name to a cell
 nameCell :: Word -> GCode (Cell t)

@@ -62,6 +62,7 @@ gexprGen (G_Gt e1 e2) = bracket $ gexprGen e1 <> bs " GT " <> gexprGen e2
 gexprGen (G_Eq e1 e2) = bracket $ gexprGen e1 <> bs " EQ " <> gexprGen e2
 gexprGen (G_Read cell) = fromCell cell
 gexprGen (G_Int i) = fromShow i
+gexprGen (G_Float i) = fromShow i
 
 ginstrGen (G k) = fromChar 'G' <> fromShow k
 ginstrGen (M k) = fromChar 'M' <> fromShow k
