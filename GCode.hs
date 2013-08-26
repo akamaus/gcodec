@@ -84,9 +84,9 @@ allocate mgcell = do
   return $ Cell c
 
 -- Creates a variable with a given name
-newVar :: Expr t -> GCode (Cell t)
+newVar :: ToExpr t => t -> GCode (Cell t)
 newVar v0 = do n <- allocate Nothing
-               n #= v0
+               n #= (toExpr v0)
                return n
 
 
