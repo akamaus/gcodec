@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import GOperator
 import GCode
+import HCode
 
 gcode_prog1 = GOps
   [ GLabel "start"

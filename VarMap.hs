@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module VarMap where
 
-import GOperator(GCell(..))
+import GCode(GCell(..))
 import Expr(Symbol)
 
 import Data.Label

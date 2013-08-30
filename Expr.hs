@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs, FlexibleInstances #-}
 module Expr where
 
-import GOperator
+import GCode
 
 import qualified Data.ByteString as S
 import Data.Word

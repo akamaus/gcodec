@@ -1,156 +1,85 @@
-{-# LANGUAGE GADTs, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
-module GCode(module GCode,
-             Cell, Expr, gRead, (#>)) where
+{-# LANGUAGE OverloadedStrings #-}
+module  GCode where
 
-import Expr
-import qualified GOperator as G
-import GOperator (GOperator)
-import VarMap
-
-import Control.Applicative
-import Control.Monad
-import Data.Label
+import Blaze.ByteString.Builder
+import Blaze.ByteString.Builder.Char.Utf8(fromChar, fromShow)
+import Control.Monad.RWS
+import Control.Monad.Reader
 import Data.List
 import Data.Maybe
 import Data.Word
 import Text.Printf
-import qualified Control.Monad.RWS as RWS
-import qualified Data.Label.PureM as L
-import qualified Data.Set as S
+import qualified Data.ByteString as S
+import qualified Data.ByteString.Lazy.Char8 as LS
 
-type CompileResults = ([Warning],[Error],GOperator)
-type Warning = String
-type Error = String
-type WhileDepth = Int
+-- AST for program in ISO7
+data GOperator = GOps [GOperator] | GLabel Label | GAssign GCell GExpr
+               | GIf GExpr GOperator | GWhile Int GExpr GOperator | GGoto Label
+               | GFrame [GInstruction ()] deriving Show
 
-type GCode = RWS.RWS WhileDepth CompileResults GCompileState
+instance Monoid GOperator where
+  mempty = GOps []
+  mappend (GOps lst1) (GOps lst2) = GOps (lst1 ++ lst2)
+  mappend (GOps lst) op = GOps (lst ++ [op])
+  mappend op (GOps lst) = GOps (op:lst)
+  mappend op1 op2 = GOps [op1, op2] -- error $ printf "can't sequence %s and %s" (show op1) (show op2)
 
--- Helpers for genting warnings, errors and code
-warn w = RWS.tell ([w],        RWS.mempty, RWS.mempty)
-err e =  RWS.tell (RWS.mempty, [e],        RWS.mempty)
-gen c = RWS.tell (RWS.mempty, RWS.mempty, c         )
+type Label = S.ByteString
+mkLabel :: String -> Label
+mkLabel = S.pack . map (fromIntegral . fromEnum)
 
-data GCompileState = GCS {
-  _gsc_vars :: VarMap, -- mapping from symbolic variables to numeric memory cells
-  _gsc_ref_labels :: S.Set G.Label, -- labels referenced from generated code
-  _gsc_gen_labels :: [G.Label]  -- already generated labels
-  } deriving Show
+data GInstruction a = G Int | M Int | X GExpr | Y GExpr | Z GExpr deriving Show
 
-mkLabels [''GCompileState]
-
--- Init compiler state
-init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [] }
-
--- Runs a computation storing a given projection of state
-saving l m = do
-  st <- L.gets l
-  res <- m
-  L.puts l st
-  return res
-
--- Generates a code block and returns it
-local_block :: GCode () -> GCode GOperator
-local_block = liftM snd . RWS.censor (\(w,e,c) -> (w,e,RWS.mempty)) . RWS.listens (\(_,_,c) -> c)
-
--- Validated labels mentioned in generated code
-check_labels :: GCode ()
-check_labels = do
-  ref <- L.gets gsc_ref_labels
-  gen <- S.fromList <$> L.gets gsc_gen_labels
-  let unused_lbls = S.difference gen ref
-      unknown_lbls = S.difference ref gen
-  mapM_ (\lbl -> warn $ printf "Unused label: %s" (show lbl)) (S.toList unused_lbls)
-  mapM_ (\lbl -> err $ printf "unknown label: %s" (show lbl)) (S.toList unknown_lbls)
-
--- Generates a code and prints it on stdout
-gcodeGen gcode = do
-  let (_, st, (warns, errs, code)) = RWS.runRWS (gcode >> check_labels) 1 init_cs
-  when (not $ null warns) $ printf "Warnings:\n%s\n" $ unlines warns
-  case (not $ null errs) of
-    True -> printf "Errors:\n%s\n" $ unlines errs
-    False -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (G.mkLabel . printf "N%04d") [10 :: Int,20 ..])
-                    label_renamer n = fromMaybe (error "PANIC: label renamer can't find a label") $ lookup n label_list
-                G.putGOps label_renamer code
-
--- *****************
---  EDSL primitives
--- *****************
-
--- Allocates a given cell or any free one
-allocate :: Maybe G.GCell -> GCode (Cell t)
-allocate mgcell = do
-  (c@(G.GCell n), vm) <- (vm_allocate mgcell) <$> L.gets gsc_vars
-  L.puts gsc_vars vm
-  return $ Cell c
-
--- Creates a variable with a given name
-newVar :: ToExpr t => t -> GCode (Cell t)
-newVar v0 = do n <- allocate Nothing
-               n #= (toExpr v0)
-               return n
+newtype GCell = GCell Word deriving (Eq, Ord, Show)
 
 
--- Gives a name to a cell
-nameCell :: Word -> GCode (Cell t)
-nameCell cell_num = allocate (Just $ G.GCell cell_num)
+-- AST of concrete expression in ISO7
+data GExpr = G_Add GExpr GExpr | G_Sub GExpr GExpr | G_Mul GExpr GExpr | G_Div GExpr GExpr
+           | G_Gt GExpr GExpr | G_Eq GExpr GExpr | G_And GExpr GExpr | G_Or GExpr GExpr | G_Not GExpr
+           | G_Int Int | G_Float Float | G_Read GCell deriving Show
 
--- GCode instructions
--- emits If
-gIf :: Expr Bool -> GCode () -> GCode ()
-gIf pred branch = do
-  let gp = eval pred
-  code <- saving gsc_vars $ local_block branch
-  gen $ G.GIf gp code
+type GopGen = Reader (Label -> Label)
 
--- emits Assignment
-(#=) :: Cell a -> Expr a -> GCode ()
-(#=) c e = gen $ G.GAssign (unCell c) (eval e)
+gopGen :: GOperator -> GopGen Builder
+gopGen (GOps ops) = do cs <- mapM gopGen ops
+                       return $ mconcat cs
+gopGen (GAssign cell expr) = return $ fromCell cell <> bs " = " <> gexprGen expr <> endl
+gopGen (GGoto label) = do trans <- ask
+                          return $ bs "GOTO " <> bs (trans label) <> endl
+gopGen (GLabel label) = do trans <- ask
+                           return $ bs (trans label) <> bs ": "
+gopGen (GIf cond branch) = do code <- gopGen branch
+                              return $ bs "IF " <> gexprGen cond <> bs " THEN " <> code <> endl
+gopGen (GWhile k cond body) = do code <- gopGen body
+                                 return $ bs "WHILE " <> gexprGen cond <> bs " DO" <> fromShow k <> endl
+                                   <> code
+                                   <> bs "END" <> fromShow k <> endl
+gopGen (GFrame codes) = return $ mconcat (intersperse (fromChar ' ') $ map ginstrGen codes) <> endl
 
-while :: Expr Bool -> GCode () -> GCode ()
-while cond body = do
-  depth <- RWS.ask
-  when (depth > 3) $ warn $ printf "Generating while of depth %d" depth
-  let expr = eval cond
-  code <- RWS.local (+1) $ saving gsc_vars $ local_block body
-  gen $ G.GWhile depth expr code
+gexprGen (G_Add e1 e2) = bracket $ gexprGen e1 <> bs " + " <> gexprGen e2
+gexprGen (G_Sub e1 e2) = bracket $ gexprGen e1 <> bs " - " <> gexprGen e2
+gexprGen (G_Mul e1 e2) = bracket $ gexprGen e1 <> bs " * " <> gexprGen e2
+gexprGen (G_Div e1 e2) = bracket $ gexprGen e1 <> bs " / " <> gexprGen e2
+gexprGen (G_Gt e1 e2) = bracket $ gexprGen e1 <> bs " GT " <> gexprGen e2
+gexprGen (G_Eq e1 e2) = bracket $ gexprGen e1 <> bs " EQ " <> gexprGen e2
+gexprGen (G_And e1 e2) = bracket $ gexprGen e1 <> bs " AND " <> gexprGen e2
+gexprGen (G_Or e1 e2) =  bracket $ gexprGen e1 <> bs " OR "  <> gexprGen e2
+gexprGen (G_Not e) =  bs "NOT "  <> gexprGen e
+gexprGen (G_Read cell) = fromCell cell
+gexprGen (G_Int i) = fromShow i
+gexprGen (G_Float i) = fromShow i
 
--- Generates a goto operator
-goto :: String -> GCode ()
-goto lbl_str = do
-  let lbl = G.mkLabel lbl_str
-  L.modify gsc_ref_labels $ S.insert lbl
-  gen $ G.GGoto lbl
+ginstrGen (G k) = fromChar 'G' <> fromShow k
+ginstrGen (M k) = fromChar 'M' <> fromShow k
+ginstrGen (X e) = fromChar 'X' <> gexprGen e
+ginstrGen (Y e) = fromChar 'Y' <> gexprGen e
+ginstrGen (Z e) = fromChar 'Z' <> gexprGen e
 
--- Creates a label at given point
-label :: String -> GCode ()
-label lbl_str = do
-  let lbl = G.mkLabel lbl_str
-  labels <- L.gets gsc_gen_labels
-  case elem lbl labels of
-    False -> do L.puts gsc_gen_labels (lbl:labels)
-                gen $ G.GLabel lbl
-    True -> error $ printf "labels must be unique, but %s is already defined" lbl_str
+bracket s = bs "[ " <> s <> bs " ]"
 
-frame :: [G.GInstruction ()] -> GCode ()
-frame = gen . G.GFrame
+fromCell (GCell n) = fromChar '#' <> fromShow n
+bs = fromByteString
+endl = fromChar '\n'
 
-class CInstruction f where
-  g :: Int -> f ()
-  m :: Int -> f ()
-  x :: Expr Double -> f ()
-  y :: Expr Double -> f ()
-  z :: Expr Double -> f ()
-
-instance CInstruction G.GInstruction where
-  g = G.G
-  m = G.M
-  x = G.X . eval
-  y = G.Y . eval
-  z = G.Z . eval
-
-instance CInstruction GCode where
-  g i = frame [g i]
-  m i = frame [m i]
-  x expr = frame [x expr]
-  y expr = frame [y expr]
-  z expr = frame [z expr]
+putGOps :: (Label -> Label) -> GOperator -> IO ()
+putGOps label_trans g = LS.putStr $ toLazyByteString $ runReader (gopGen g) label_trans
