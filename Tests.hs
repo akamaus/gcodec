@@ -24,8 +24,8 @@ hcode_prog1 = do
   var100 #= (gRead var100 - 5)
   gIf (gRead var100 #> 0)
     (goto "start")
+  m 30
   label "end"
-  m 100
 
 hcode_prog2 :: GCode ()
 hcode_prog2 = do

@@ -15,7 +15,7 @@ import qualified Data.ByteString.Lazy.Char8 as LS
 -- AST for program in ISO7
 data GOperator = GOps [GOperator] | GLabel Label | GAssign GCell GExpr
                | GIf GExpr GOperator | GWhile Int GExpr GOperator | GGoto Label
-               | GFrame [GInstruction] deriving Show
+               | GFrame [GInstruction ()] deriving Show
 
 instance Monoid GOperator where
   mempty = GOps []
@@ -28,7 +28,7 @@ type Label = S.ByteString
 mkLabel :: String -> Label
 mkLabel = S.pack . map (fromIntegral . fromEnum)
 
-data GInstruction = G Int | M Int | X GExpr | Y GExpr | Z GExpr deriving Show
+data GInstruction a = G Int | M Int | X GExpr | Y GExpr | Z GExpr deriving Show
 
 newtype GCell = GCell Word deriving (Eq, Ord, Show)
 

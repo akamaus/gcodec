@@ -131,15 +131,15 @@ label lbl_str = do
                 gen $ G.GLabel lbl
     True -> error $ printf "labels must be unique, but %s is already defined" lbl_str
 
-frame :: [G.GInstruction] -> GCode ()
+frame :: [G.GInstruction ()] -> GCode ()
 frame = gen . G.GFrame
 
-class CInstruction a where
-  g :: Int -> a
-  m :: Int -> a
-  x :: Expr Double -> a
-  y :: Expr Double -> a
-  z :: Expr Double -> a
+class CInstruction f where
+  g :: Int -> f ()
+  m :: Int -> f ()
+  x :: Expr Double -> f ()
+  y :: Expr Double -> f ()
+  z :: Expr Double -> f ()
 
 instance CInstruction G.GInstruction where
   g = G.G
@@ -148,7 +148,7 @@ instance CInstruction G.GInstruction where
   y = G.Y . eval
   z = G.Z . eval
 
-instance CInstruction (GCode ()) where
+instance CInstruction GCode where
   g i = frame [g i]
   m i = frame [m i]
   x expr = frame [x expr]
