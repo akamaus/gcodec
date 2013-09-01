@@ -3,6 +3,11 @@ module Expr where
 
 import GCode
 
+import Prelude hiding(Bool, (&&), (||), not)
+import qualified Prelude as P
+
+import Bool
+
 import qualified Data.ByteString as S
 import Data.Word
 import Data.Ratio
@@ -31,7 +36,7 @@ instance ToExpr Double where
   toExpr = FloatE
 
 data Expr t where
-  BoolE :: Bool -> Expr Bool
+  BoolE :: P.Bool -> Expr Bool
   IntE :: Integral t => t -> Expr t
   FloatE :: RealFrac t => t -> Expr t
   Add :: Num t => Expr t -> Expr t -> Expr t
@@ -55,11 +60,9 @@ instance (Fractional t, ToExpr t) => Fractional(Expr t) where
   fromRational = toExpr . fromRational
   (/) = Div
 
-(#==) :: Eq t => Expr t -> Expr t -> Expr Bool
-e1 #== e2 = Eq e1 e2
-
-(#>) :: Ord t => Expr t -> Expr t -> Expr Bool
-e1 #> e2 = Gt e1 e2
+instance BoolC Expr where
+  false = BoolE P.False
+  true  = BoolE P.True
 
 -- Evaluating type-save Exprs to untyped GExprs suited for generation gcode
 eval :: Expr t -> GExpr
