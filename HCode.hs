@@ -138,8 +138,8 @@ frame = gen . GFrame
 class CInstruction con where
   g :: Int -> con ()
   m :: Int -> con ()
-  s :: Int -> con ()
-  f :: Int -> con ()
+  s :: Expr Double -> con ()
+  f :: Expr Double -> con ()
   d :: Int -> con ()
   h :: Int -> con ()
   x :: Expr Double -> con ()
@@ -153,8 +153,8 @@ class CInstruction con where
 instance CInstruction GInstruction where
   g = check_diap 0 199 .  GInstrI 'G'
   m = check_diap 0 99  .  GInstrI 'M'
-  s = GInstrI 'S'
-  f = GInstrI 'F'
+  s = GInstrE 'S' . eval
+  f = GInstrE 'F' . eval
   d = check_diap 0 1000 . GInstrI 'D'
   h = check_diap 0 1000 . GInstrI 'H'
   x = GInstrE 'X' . eval
@@ -171,9 +171,9 @@ check_diap a b instr@(GInstrI c k) | k < a && k > b = error $ printf "Code %c mu
 instance CInstruction HCode where
   g i = frame [g i]
   m i = frame [m i]
-  s i = frame [s i]
-  f i = frame [d i]
-  d i = frame [f i]
+  s expr = frame [s expr]
+  f expr = frame [f expr]
+  d i = frame [d i]
   h i = frame [h i]
   x expr = frame [x expr]
   y expr = frame [y expr]
