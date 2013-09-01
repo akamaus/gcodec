@@ -3,6 +3,9 @@
 import GCode
 import HCode
 
+import AwePrelude
+import Prelude(Num(..), Int, ($), id, putStrLn)
+
 gcode_prog1 = GOps
   [ GLabel "start"
   , GAssign (GCell 101) (G_Add (G_Read $ GCell 101) (G_Int 42))
@@ -22,7 +25,7 @@ hcode_prog1 = do
   var101 #= (gRead var101 + 42)
   frame [g 1, z (gRead var101), y (gRead var100), z 20]
   var100 #= (gRead var100 - 5)
-  gIf (gRead var100 #> 0)
+  gIf (gRead var100 > 0)
     (goto "start")
   m 30
   label "end"
@@ -35,8 +38,8 @@ hcode_prog2 = do
   cur_x <- newVar 5.0
   cur_y <- newVar 5.0
   count <- newVar (0 :: Int)
-  while (100 #> gRead cur_x) $ do
-    while (200 #> gRead cur_y) $ do
+  while (100 > gRead cur_x) $ do
+    while (200 > gRead cur_y) $ do
       count #= (gRead count + 1)
       frame [g 100, x $ gRead cur_x, y $ gRead cur_y]
       frame [g 101, z 0]

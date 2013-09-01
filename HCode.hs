@@ -1,10 +1,12 @@
 {-# LANGUAGE GADTs, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
 module HCode(module HCode,
-             Cell, Expr, gRead, (#>)) where
+             Cell, Expr, gRead) where
 
 import Expr
 import GCode
 import VarMap
+
+import qualified AwePrelude as W
 
 import Control.Applicative
 import Control.Monad
@@ -95,7 +97,7 @@ nameCell cell_num = allocate (Just $ GCell cell_num)
 
 -- HCode instructions
 -- emits If
-gIf :: Expr Bool -> HCode () -> HCode ()
+gIf :: Expr W.Bool -> HCode () -> HCode ()
 gIf pred branch = do
   let gp = eval pred
   code <- saving gsc_vars $ local_block branch
@@ -105,7 +107,7 @@ gIf pred branch = do
 (#=) :: Cell a -> Expr a -> HCode ()
 (#=) c e = gen $ GAssign (unCell c) (eval e)
 
-while :: Expr Bool -> HCode () -> HCode ()
+while :: Expr W.Bool -> HCode () -> HCode ()
 while cond body = do
   depth <- RWS.ask
   when (depth > 3) $ warn $ printf "Generating while of depth %d" depth

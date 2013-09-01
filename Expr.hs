@@ -1,12 +1,12 @@
-{-# LANGUAGE GADTs, FlexibleInstances #-}
+{-# LANGUAGE GADTs, FlexibleInstances, MultiParamTypeClasses #-}
 module Expr where
 
 import GCode
 
-import Prelude hiding(Bool, (&&), (||), not)
-import qualified Prelude as P
+import Prelude hiding((&&), (||), not,
+                      (==))
 
-import Bool
+import qualified AwePrelude as W
 
 import qualified Data.ByteString as S
 import Data.Word
@@ -36,18 +36,18 @@ instance ToExpr Double where
   toExpr = FloatE
 
 data Expr t where
-  BoolE :: P.Bool -> Expr Bool
+  BoolE :: Bool -> Expr W.Bool
   IntE :: Integral t => t -> Expr t
   FloatE :: RealFrac t => t -> Expr t
   Add :: Num t => Expr t -> Expr t -> Expr t
   Sub :: Num t => Expr t -> Expr t -> Expr t
   Mul :: Num t => Expr t -> Expr t -> Expr t
   Div :: Num t => Expr t -> Expr t -> Expr t
-  And :: Expr Bool -> Expr Bool -> Expr Bool
-  Or :: Expr Bool -> Expr Bool -> Expr Bool
-  Not :: Expr Bool -> Expr Bool
-  Eq :: Eq t => Expr t -> Expr t -> Expr Bool
-  Gt :: Ord t => Expr t -> Expr t -> Expr Bool
+  And :: Expr W.Bool -> Expr W.Bool -> Expr W.Bool
+  Or  :: Expr W.Bool -> Expr W.Bool -> Expr W.Bool
+  Not :: Expr W.Bool -> Expr W.Bool
+  Eq  :: Expr t -> Expr t -> Expr W.Bool
+  Gt  :: Expr t -> Expr t -> Expr W.Bool
   Read :: Cell t -> Expr t
 
 instance (Num t, ToExpr t) => Num (Expr t) where
@@ -60,9 +60,19 @@ instance (Fractional t, ToExpr t) => Fractional(Expr t) where
   fromRational = toExpr . fromRational
   (/) = Div
 
-instance BoolC Expr where
-  false = BoolE P.False
-  true  = BoolE P.True
+instance W.BoolC Expr where
+  false = BoolE False
+  true  = BoolE True
+  (&&)  = And
+  (||)  = And
+  not   = Not
+
+instance W.Eq Expr a where
+  (==)  = Eq
+
+instance W.Ord Expr a where
+  (>) = Gt
+  a < b = b > a
 
 -- Evaluating type-save Exprs to untyped GExprs suited for generation gcode
 eval :: Expr t -> GExpr
