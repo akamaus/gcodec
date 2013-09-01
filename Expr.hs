@@ -4,7 +4,7 @@ module Expr where
 import GCode
 
 import Prelude hiding((&&), (||), not,
-                      (==))
+                      (==), (>), (<))
 
 import qualified AwePrelude as W
 
@@ -72,7 +72,7 @@ instance W.Eq Expr a where
 
 instance W.Ord Expr a where
   (>) = Gt
-  a < b = b > a
+  a < b = (W.>) b a
 
 -- Evaluating type-save Exprs to untyped GExprs suited for generation gcode
 eval :: Expr t -> GExpr
