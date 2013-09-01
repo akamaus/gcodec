@@ -14,7 +14,7 @@ gcode_prog1 = GOps
   , GFrame [M 100]
   ]
 
-hcode_prog1 :: GCode ()
+hcode_prog1 :: HCode ()
 hcode_prog1 = do
   label "start"
   var101 <- nameCell 101
@@ -27,7 +27,7 @@ hcode_prog1 = do
   m 30
   label "end"
 
-hcode_prog2 :: GCode ()
+hcode_prog2 :: HCode ()
 hcode_prog2 = do
   let safe = 20
       step = 15

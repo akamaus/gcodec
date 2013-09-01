@@ -23,7 +23,7 @@ type Warning = String
 type Error = String
 type WhileDepth = Int
 
-type GCode = RWS.RWS WhileDepth CompileResults GCompileState
+type HCode = RWS.RWS WhileDepth CompileResults GCompileState
 
 -- Helpers for genting warnings, errors and code
 warn w = RWS.tell ([w],        RWS.mempty, RWS.mempty)
@@ -49,11 +49,11 @@ saving l m = do
   return res
 
 -- Generates a code block and returns it
-local_block :: GCode () -> GCode GOperator
+local_block :: HCode () -> HCode GOperator
 local_block = liftM snd . RWS.censor (\(w,e,c) -> (w,e,RWS.mempty)) . RWS.listens (\(_,_,c) -> c)
 
 -- Validated labels mentioned in generated code
-check_labels :: GCode ()
+check_labels :: HCode ()
 check_labels = do
   ref <- L.gets gsc_ref_labels
   gen <- S.fromList <$> L.gets gsc_gen_labels
@@ -77,36 +77,36 @@ gcodeGen gcode = do
 -- *****************
 
 -- Allocates a given cell or any free one
-allocate :: Maybe G.GCell -> GCode (Cell t)
+allocate :: Maybe G.GCell -> HCode (Cell t)
 allocate mgcell = do
   (c@(G.GCell n), vm) <- (vm_allocate mgcell) <$> L.gets gsc_vars
   L.puts gsc_vars vm
   return $ Cell c
 
 -- Creates a variable with a given name
-newVar :: ToExpr t => t -> GCode (Cell t)
+newVar :: ToExpr t => t -> HCode (Cell t)
 newVar v0 = do n <- allocate Nothing
                n #= (toExpr v0)
                return n
 
 
 -- Gives a name to a cell
-nameCell :: Word -> GCode (Cell t)
+nameCell :: Word -> HCode (Cell t)
 nameCell cell_num = allocate (Just $ G.GCell cell_num)
 
--- GCode instructions
+-- HCode instructions
 -- emits If
-gIf :: Expr Bool -> GCode () -> GCode ()
+gIf :: Expr Bool -> HCode () -> HCode ()
 gIf pred branch = do
   let gp = eval pred
   code <- saving gsc_vars $ local_block branch
   gen $ G.GIf gp code
 
 -- emits Assignment
-(#=) :: Cell a -> Expr a -> GCode ()
+(#=) :: Cell a -> Expr a -> HCode ()
 (#=) c e = gen $ G.GAssign (unCell c) (eval e)
 
-while :: Expr Bool -> GCode () -> GCode ()
+while :: Expr Bool -> HCode () -> HCode ()
 while cond body = do
   depth <- RWS.ask
   when (depth > 3) $ warn $ printf "Generating while of depth %d" depth
@@ -115,14 +115,14 @@ while cond body = do
   gen $ G.GWhile depth expr code
 
 -- Generates a goto operator
-goto :: String -> GCode ()
+goto :: String -> HCode ()
 goto lbl_str = do
   let lbl = G.mkLabel lbl_str
   L.modify gsc_ref_labels $ S.insert lbl
   gen $ G.GGoto lbl
 
 -- Creates a label at given point
-label :: String -> GCode ()
+label :: String -> HCode ()
 label lbl_str = do
   let lbl = G.mkLabel lbl_str
   labels <- L.gets gsc_gen_labels
@@ -131,7 +131,7 @@ label lbl_str = do
                 gen $ G.GLabel lbl
     True -> error $ printf "labels must be unique, but %s is already defined" lbl_str
 
-frame :: [G.GInstruction ()] -> GCode ()
+frame :: [G.GInstruction ()] -> HCode ()
 frame = gen . G.GFrame
 
 class CInstruction f where
@@ -148,7 +148,7 @@ instance CInstruction G.GInstruction where
   y = G.Y . eval
   z = G.Z . eval
 
-instance CInstruction GCode where
+instance CInstruction HCode where
   g i = frame [g i]
   m i = frame [m i]
   x expr = frame [x expr]
