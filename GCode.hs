@@ -28,7 +28,8 @@ type Label = S.ByteString
 mkLabel :: String -> Label
 mkLabel = S.pack . map (fromIntegral . fromEnum)
 
-data GInstruction a = G Int | M Int | X GExpr | Y GExpr | Z GExpr deriving Show
+data GInstruction a = GInstrI Char Int -- integer compile type constant
+                    | GInstrE Char GExpr deriving Show -- dynamic value
 
 newtype GCell = GCell Word deriving (Eq, Ord, Show)
 
@@ -69,11 +70,8 @@ gexprGen (G_Read cell) = fromCell cell
 gexprGen (G_Int i) = fromShow i
 gexprGen (G_Float i) = fromShow i
 
-ginstrGen (G k) = fromChar 'G' <> fromShow k
-ginstrGen (M k) = fromChar 'M' <> fromShow k
-ginstrGen (X e) = fromChar 'X' <> gexprGen e
-ginstrGen (Y e) = fromChar 'Y' <> gexprGen e
-ginstrGen (Z e) = fromChar 'Z' <> gexprGen e
+ginstrGen (GInstrI c k) = fromChar c <> fromShow k
+ginstrGen (GInstrE c e) = fromChar c <> gexprGen e
 
 bracket s = bs "[ " <> s <> bs " ]"
 

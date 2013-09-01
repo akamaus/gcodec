@@ -133,23 +133,50 @@ label lbl_str = do
 frame :: [GInstruction ()] -> HCode ()
 frame = gen . GFrame
 
-class CInstruction f where
-  g :: Int -> f ()
-  m :: Int -> f ()
-  x :: Expr Double -> f ()
-  y :: Expr Double -> f ()
-  z :: Expr Double -> f ()
+class CInstruction con where
+  g :: Int -> con ()
+  m :: Int -> con ()
+  s :: Int -> con ()
+  f :: Int -> con ()
+  d :: Int -> con ()
+  h :: Int -> con ()
+  x :: Expr Double -> con ()
+  y :: Expr Double -> con ()
+  z :: Expr Double -> con ()
+  i :: Expr Double -> con ()
+  j :: Expr Double -> con ()
+  k :: Expr Double -> con ()
+  r :: Expr Double -> con ()
 
 instance CInstruction GInstruction where
-  g = G
-  m = M
-  x = X . eval
-  y = Y . eval
-  z = Z . eval
+  g = check_diap 0 199 .  GInstrI 'G'
+  m = check_diap 0 99  .  GInstrI 'M'
+  s = GInstrI 'S'
+  f = GInstrI 'F'
+  d = check_diap 0 1000 . GInstrI 'D'
+  h = check_diap 0 1000 . GInstrI 'H'
+  x = GInstrE 'X' . eval
+  y = GInstrE 'Y' . eval
+  z = GInstrE 'Z' . eval
+  i = GInstrE 'I' . eval
+  j = GInstrE 'J' . eval
+  k = GInstrE 'K' . eval
+  r = GInstrE 'R' . eval
+
+check_diap a b instr@(GInstrI c k) | k < a && k > b = error $ printf "Code %c must be in diapason %d-%d, but %d given" c a b k
+                                   | otherwise = instr
 
 instance CInstruction HCode where
   g i = frame [g i]
   m i = frame [m i]
+  s i = frame [s i]
+  f i = frame [d i]
+  d i = frame [f i]
+  h i = frame [h i]
   x expr = frame [x expr]
   y expr = frame [y expr]
   z expr = frame [z expr]
+  i expr = frame [i expr]
+  j expr = frame [j expr]
+  k expr = frame [k expr]
+  r expr = frame [r expr]
