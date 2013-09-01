@@ -3,13 +3,12 @@ module HCode(module HCode,
              Cell, Expr, gRead, (#>)) where
 
 import Expr
-import qualified GCode as G
-import GCode (GOperator)
+import GCode
 import VarMap
 
 import Control.Applicative
 import Control.Monad
-import Data.Label
+import Data.Label hiding(mkLabel)
 import Data.List
 import Data.Maybe
 import Data.Word
@@ -32,8 +31,8 @@ gen c = RWS.tell (RWS.mempty, RWS.mempty, c         )
 
 data GCompileState = GCS {
   _gsc_vars :: VarMap, -- mapping from symbolic variables to numeric memory cells
-  _gsc_ref_labels :: S.Set G.Label, -- labels referenced from generated code
-  _gsc_gen_labels :: [G.Label]  -- already generated labels
+  _gsc_ref_labels :: S.Set Label, -- labels referenced from generated code
+  _gsc_gen_labels :: [Label]  -- already generated labels
   } deriving Show
 
 mkLabels [''GCompileState]
@@ -68,18 +67,18 @@ gcodeGen gcode = do
   when (not $ null warns) $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
     True -> printf "Errors:\n%s\n" $ unlines errs
-    False -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (G.mkLabel . printf "N%04d") [10 :: Int,20 ..])
+    False -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (mkLabel . printf "N%04d") [10 :: Int,20 ..])
                     label_renamer n = fromMaybe (error "PANIC: label renamer can't find a label") $ lookup n label_list
-                G.putGOps label_renamer code
+                putGOps label_renamer code
 
 -- *****************
 --  EDSL primitives
 -- *****************
 
 -- Allocates a given cell or any free one
-allocate :: Maybe G.GCell -> HCode (Cell t)
+allocate :: Maybe GCell -> HCode (Cell t)
 allocate mgcell = do
-  (c@(G.GCell n), vm) <- (vm_allocate mgcell) <$> L.gets gsc_vars
+  (c@(GCell n), vm) <- (vm_allocate mgcell) <$> L.gets gsc_vars
   L.puts gsc_vars vm
   return $ Cell c
 
@@ -92,7 +91,7 @@ newVar v0 = do n <- allocate Nothing
 
 -- Gives a name to a cell
 nameCell :: Word -> HCode (Cell t)
-nameCell cell_num = allocate (Just $ G.GCell cell_num)
+nameCell cell_num = allocate (Just $ GCell cell_num)
 
 -- HCode instructions
 -- emits If
@@ -100,11 +99,11 @@ gIf :: Expr Bool -> HCode () -> HCode ()
 gIf pred branch = do
   let gp = eval pred
   code <- saving gsc_vars $ local_block branch
-  gen $ G.GIf gp code
+  gen $ GIf gp code
 
 -- emits Assignment
 (#=) :: Cell a -> Expr a -> HCode ()
-(#=) c e = gen $ G.GAssign (unCell c) (eval e)
+(#=) c e = gen $ GAssign (unCell c) (eval e)
 
 while :: Expr Bool -> HCode () -> HCode ()
 while cond body = do
@@ -112,27 +111,27 @@ while cond body = do
   when (depth > 3) $ warn $ printf "Generating while of depth %d" depth
   let expr = eval cond
   code <- RWS.local (+1) $ saving gsc_vars $ local_block body
-  gen $ G.GWhile depth expr code
+  gen $ GWhile depth expr code
 
 -- Generates a goto operator
 goto :: String -> HCode ()
 goto lbl_str = do
-  let lbl = G.mkLabel lbl_str
+  let lbl = mkLabel lbl_str
   L.modify gsc_ref_labels $ S.insert lbl
-  gen $ G.GGoto lbl
+  gen $ GGoto lbl
 
 -- Creates a label at given point
 label :: String -> HCode ()
 label lbl_str = do
-  let lbl = G.mkLabel lbl_str
+  let lbl = mkLabel lbl_str
   labels <- L.gets gsc_gen_labels
   case elem lbl labels of
     False -> do L.puts gsc_gen_labels (lbl:labels)
-                gen $ G.GLabel lbl
+                gen $ GLabel lbl
     True -> error $ printf "labels must be unique, but %s is already defined" lbl_str
 
-frame :: [G.GInstruction ()] -> HCode ()
-frame = gen . G.GFrame
+frame :: [GInstruction ()] -> HCode ()
+frame = gen . GFrame
 
 class CInstruction f where
   g :: Int -> f ()
@@ -141,12 +140,12 @@ class CInstruction f where
   y :: Expr Double -> f ()
   z :: Expr Double -> f ()
 
-instance CInstruction G.GInstruction where
-  g = G.G
-  m = G.M
-  x = G.X . eval
-  y = G.Y . eval
-  z = G.Z . eval
+instance CInstruction GInstruction where
+  g = G
+  m = M
+  x = X . eval
+  y = Y . eval
+  z = Z . eval
 
 instance CInstruction HCode where
   g i = frame [g i]
