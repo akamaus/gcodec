@@ -25,7 +25,7 @@ hcode_prog1 = do
   var100 #= (var100 - 5)
   gIf (var100 #> 0)
     (goto "start")
-  m 30
+  m 30 # "stop operation"
   label "end"
 
 hcode_prog2 :: HCode ()
@@ -33,15 +33,15 @@ hcode_prog2 = do
   let safe = 20
       step = 15
   frame [g 100, z safe]
-  speed <- newVar 15
-  speed2 <- newVar 2
-  cur_x <- newVar 5.0
+  speed <- newVar 15 # "feed speed"
+  speed2 <- newVar 2 # "rotation speed"
+  cur_x <- newVar 5.0 # "current x"
   cur_y <- newVar 5.0
   count <- newVar (0 :: Int)
   while (100 #> cur_x) $ do
     while (200 #> cur_y) $ do
       count #= (count + 1)
-      frame [g 100, f (speed), s (speed2), x $ cur_x, y $ cur_y]
+      frame [g 100, f (speed), s (speed2), x $ cur_x, y $ cur_y] # "fast move"
       frame [g 101, z 0]
       frame [g 100, z 20]
       cur_x #= (cur_x + step)

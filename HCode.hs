@@ -24,21 +24,33 @@ type WhileDepth = Int
 
 type HCode = RWS.RWS WhileDepth CompileResults GCompileState
 
--- Helpers for genting warnings, errors and code
-warn w = RWS.tell ([w],        RWS.mempty, RWS.mempty)
-err e =  RWS.tell (RWS.mempty, [e],        RWS.mempty)
-gen c = RWS.tell (RWS.mempty, RWS.mempty, c         )
-
 data GCompileState = GCS {
   _gsc_vars :: VarMap, -- mapping from symbolic variables to numeric memory cells
   _gsc_ref_labels :: S.Set Label, -- labels referenced from generated code
-  _gsc_gen_labels :: [Label]  -- already generated labels
+  _gsc_gen_labels :: [Label],  -- already generated labels
+  _gsc_acc :: Maybe GOperator  -- operator currently being assembled
   } deriving Show
 
 mkLabels [''GCompileState]
 
+-- Helpers for generating warnings, errors and code
+warn w = RWS.tell ([w],        RWS.mempty, RWS.mempty)
+err e =  RWS.tell (RWS.mempty, [e],        RWS.mempty)
+gen op = do genAccumulated
+            L.puts gsc_acc (Just op)
+
+-- Freezing accumulated operator
+genAccumulated :: HCode ()
+genAccumulated = do
+  acc <- L.gets gsc_acc
+  case acc of
+    Nothing -> return ()
+    Just op -> RWS.tell (RWS.mempty, RWS.mempty, op)
+  L.puts gsc_acc Nothing
+
+
 -- Init compiler state
-init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [] }
+init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [], _gsc_acc = Nothing }
 
 -- Runs a computation storing a given projection of state
 saving l m = do
@@ -63,7 +75,7 @@ check_labels = do
 
 -- Generates a code and prints it on stdout
 gcodeGen gcode = do
-  let (_, st, (warns, errs, code)) = RWS.runRWS (gcode >> check_labels) 1 init_cs
+  let (_, st, (warns, errs, code)) = RWS.runRWS (gcode >> genAccumulated >> check_labels) 1 init_cs
   when (not $ null warns) $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
     True -> printf "Errors:\n%s\n" $ unlines errs
@@ -133,6 +145,16 @@ label lbl_str = do
 
 frame :: [GInstruction ()] -> HCode ()
 frame = gen . GFrame
+
+-- Emits comment
+(#) :: HCode a -> String -> HCode a
+code # comment = do
+  r <- code
+  acc <- L.gets gsc_acc
+  case acc of
+    Nothing -> warn "no operator to attach comment to"
+    Just op -> L.puts gsc_acc $ Just $ GOps [op] comment
+  return r
 
 class CInstruction con where
   g :: Int -> con ()
