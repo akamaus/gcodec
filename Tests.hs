@@ -12,7 +12,8 @@ gcode_prog1 = GOps
       (GGoto "start")
   , GLabel "end"
   , GFrame [GInstrI 'M' 100]
-  ]
+  , GOps [GFrame [GInstrI 'M' 30]] ""
+  ] "a test program"
 
 hcode_prog1 :: HCode ()
 hcode_prog1 = do

@@ -13,16 +13,20 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy.Char8 as LS
 
 -- AST for program in ISO7
-data GOperator = GOps [GOperator] | GLabel Label | GAssign GCell GExpr
+data GOperator = GOps [GOperator] Comment | GLabel Label | GAssign GCell GExpr
                | GIf GExpr GOperator | GWhile Int GExpr GOperator | GGoto Label
                | GFrame [GInstruction ()] deriving Show
 
+type Comment = String
+
 instance Monoid GOperator where
-  mempty = GOps []
-  mappend (GOps lst1) (GOps lst2) = GOps (lst1 ++ lst2)
-  mappend (GOps lst) op = GOps (lst ++ [op])
-  mappend op (GOps lst) = GOps (op:lst)
-  mappend op1 op2 = GOps [op1, op2] -- error $ printf "can't sequence %s and %s" (show op1) (show op2)
+  mempty = GOps [] []
+  mappend (GOps lst1 c1) (GOps lst2 "") = GOps (lst1 ++ lst2) c1
+  mappend g1@(GOps _ _) g2@(GOps _ _)= GOps [g1, g2] ""
+  mappend (GOps lst c) op = GOps (lst ++ [op]) c
+  mappend op (GOps lst "") = GOps (op:lst) ""
+  mappend op g@(GOps _ _) = GOps [GOps [op] "", g] ""
+  mappend op1 op2 = GOps [op1, op2] ""
 
 type Label = S.ByteString
 mkLabel :: String -> Label
@@ -42,8 +46,11 @@ data GExpr = G_Add GExpr GExpr | G_Sub GExpr GExpr | G_Mul GExpr GExpr | G_Div G
 type GopGen = Reader (Label -> Label)
 
 gopGen :: GOperator -> GopGen Builder
-gopGen (GOps ops) = do cs <- mapM gopGen ops
-                       return $ mconcat cs
+gopGen (GOps ops comment) = do cs <- mapM gopGen ops
+                               let cmt = case comment of
+                                     "" -> bs ""
+                                     str -> bs "( " <> bs (S.pack . map (toEnum . fromEnum) $ str) <> bs " )" <> endl
+                               return $ cmt <> mconcat cs
 gopGen (GAssign cell expr) = return $ fromCell cell <> bs " = " <> gexprGen expr <> endl
 gopGen (GGoto label) = do trans <- ask
                           return $ bs "GOTO " <> bs (trans label) <> endl
