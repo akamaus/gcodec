@@ -15,19 +15,20 @@ gcode_prog1 = GOps
       (GGoto "start")
   , GLabel "end"
   , GFrame [GInstrI 'M' 100]
-  ]
+  , GOps [GFrame [GInstrI 'M' 30]] ""
+  ] "a test program"
 
 hcode_prog1 :: HCode ()
 hcode_prog1 = do
   label "start"
   var101 <- nameCell 101
   var100 <- nameCell 100
-  var101 #= (gRead var101 + 42)
-  frame [g 1, z (gRead var101), y (gRead var100), z 20]
-  var100 #= (gRead var100 - 5)
-  gIf (gRead var100 > 0)
+  var101 #= (var101 + 42)
+  frame [g 1, z (var101), y (var100), z 20]
+  var100 #= (var100 - 5)
+  gIf (var100 > 0)
     (goto "start")
-  m 30
+  m 30 # "stop operation"
   label "end"
 
 hcode_prog2 :: HCode ()
@@ -35,19 +36,19 @@ hcode_prog2 = do
   let safe = 20
       step = 15
   frame [g 100, z safe]
-  speed <- newVar 15
-  speed2 <- newVar 2
-  cur_x <- newVar 5.0
+  speed <- newVar 15 # "feed speed"
+  speed2 <- newVar 2 # "rotation speed"
+  cur_x <- newVar 5.0 # "current x"
   cur_y <- newVar 5.0
   count <- newVar (0 :: Int)
-  while (100 > gRead cur_x) $ do
-    while (200 > gRead cur_y) $ do
-      count #= (gRead count + 1)
-      frame [g 100, f (gRead speed), s (gRead speed2), x $ gRead cur_x, y $ gRead cur_y]
+  while (cur_x < 100) $ do
+    while (cur_y < 200) $ do
+      count #= (count + 1)
+      frame [g 100, f (speed), s (speed2), x $ cur_x, y $ cur_y] # "fast move"
       frame [g 101, z 0]
-      frame [g 100, z 20]
-      cur_x #= (gRead cur_x + step)
-    cur_y #= (gRead cur_y + step)
+      frame [g 100, z 20] # "drilling down"
+      cur_x #= (cur_x + step)
+    cur_y #= (cur_y + step)
 
 main = do
   putStrLn "***** GCode example: \n\n"
