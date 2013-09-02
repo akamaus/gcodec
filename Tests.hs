@@ -19,10 +19,10 @@ hcode_prog1 = do
   label "start"
   var101 <- nameCell 101
   var100 <- nameCell 100
-  var101 #= (gRead var101 + 42)
-  frame [g 1, z (gRead var101), y (gRead var100), z 20]
-  var100 #= (gRead var100 - 5)
-  gIf (gRead var100 #> 0)
+  var101 #= (var101 + 42)
+  frame [g 1, z (var101), y (var100), z 20]
+  var100 #= (var100 - 5)
+  gIf (var100 #> 0)
     (goto "start")
   m 30
   label "end"
@@ -37,14 +37,14 @@ hcode_prog2 = do
   cur_x <- newVar 5.0
   cur_y <- newVar 5.0
   count <- newVar (0 :: Int)
-  while (100 #> gRead cur_x) $ do
-    while (200 #> gRead cur_y) $ do
-      count #= (gRead count + 1)
-      frame [g 100, f (gRead speed), s (gRead speed2), x $ gRead cur_x, y $ gRead cur_y]
+  while (100 #> cur_x) $ do
+    while (200 #> cur_y) $ do
+      count #= (count + 1)
+      frame [g 100, f (speed), s (speed2), x $ cur_x, y $ cur_y]
       frame [g 101, z 0]
       frame [g 100, z 20]
-      cur_x #= (gRead cur_x + step)
-    cur_y #= (gRead cur_y + step)
+      cur_x #= (cur_x + step)
+    cur_y #= (cur_y + step)
 
 main = do
   putStrLn "***** GCode example: \n\n"

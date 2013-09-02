@@ -83,15 +83,15 @@ allocate mgcell = do
   return $ Cell c
 
 -- Creates a variable with a given name
-newVar :: ToExpr t => t -> HCode (Cell t)
-newVar v0 = do n <- allocate Nothing
+newVar :: ToExpr t => t -> HCode (Expr t)
+newVar v0 = do n <- gRead <$> allocate Nothing
                n #= (toExpr v0)
                return n
 
 
 -- Gives a name to a cell
-nameCell :: Word -> HCode (Cell t)
-nameCell cell_num = allocate (Just $ GCell cell_num)
+nameCell :: Word -> HCode (Expr t)
+nameCell cell_num = gRead <$> allocate (Just $ GCell cell_num)
 
 -- HCode instructions
 -- emits If
@@ -102,8 +102,9 @@ gIf pred branch = do
   gen $ GIf gp code
 
 -- emits Assignment
-(#=) :: Cell a -> Expr a -> HCode ()
-(#=) c e = gen $ GAssign (unCell c) (eval e)
+(#=) :: Expr a -> Expr a -> HCode ()
+(#=) (Read c) e = gen $ GAssign (unCell c) (eval e)
+(#=) _ e = error "Left side of an assignment must be a variable"
 
 while :: Expr Bool -> HCode () -> HCode ()
 while cond body = do
