@@ -48,7 +48,7 @@ gopGen (GAssign cell expr) = return $ fromCell cell <> bs " = " <> gexprGen expr
 gopGen (GGoto label) = do trans <- ask
                           return $ bs "GOTO " <> bs (trans label) <> endl
 gopGen (GLabel label) = do trans <- ask
-                           return $ bs (trans label) <> bs ": "
+                           return $ bs (trans label) <> bs " "
 gopGen (GIf cond branch) = do code <- gopGen branch
                               return $ bs "IF " <> gexprGen cond <> bs " THEN " <> code <> endl
 gopGen (GWhile k cond body) = do code <- gopGen body
