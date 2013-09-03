@@ -50,6 +50,33 @@ hcode_prog2 = do
       cur_x #= (cur_x + step)
     cur_y #= (cur_y + step)
 
+
+gabarit move = do
+  cur_x <- nameCell 5001
+  cur_y <- nameCell 5002
+  cur_z <- nameCell 5003
+
+  incr_z1 <- newVar 0
+  instr_diam <- newVar 0
+  visota <- newVar 0
+  tolshina <- newVar 0
+  number <- newVar 0
+  
+  frame [g 91, g 28, x 0, y 0, z 0]
+  -- ...
+  frame [move, {- f #150, -} y (gRead instr_diam), x (negate $ gRead instr_diam + 10)]
+  -- ..
+  while (gRead cur_z > (gRead visota + 15)) $ do
+    frame [g 01, {- f #150, -} y (gRead instr_diam), x (negate $ gRead instr_diam + 1)]
+    while (gRead cur_y > negate (gRead tolshina + gRead number - gRead instr_diam)) $ do
+      y $ gRead cur_y - gRead instr_diam
+    frame [y 0]
+    gIf (55 > gRead cur_z) $ goto "exit"
+    frame [ {- f 151, -} z $ gRead cur_z - gRead incr_z1]
+  frame [z (gRead visota)]
+  label "exit"
+  frame [m 30]
+
 main = do
   putStrLn "***** GCode example: \n\n"
   putGOps id gcode_prog1
@@ -58,3 +85,8 @@ main = do
 
   putStrLn "\n***** HCode example2: \n\n"
   gcodeGen hcode_prog2
+  
+  putStrLn "\n***** Gabarit: \n\n"
+  gcodeGen $ gabarit (g 0)
+  
+  
