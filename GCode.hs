@@ -18,6 +18,7 @@ data GOperator = GOps [GOperator] Comment | GLabel Label | GAssign GCell GExpr
                | GFrame [GInstruction ()] deriving Show
 
 type Comment = String
+type OpName = String
 
 instance Monoid GOperator where
   mempty = GOps [] []
@@ -30,7 +31,7 @@ instance Monoid GOperator where
 
 type Label = S.ByteString
 mkLabel :: String -> Label
-mkLabel = S.pack . map (fromIntegral . fromEnum)
+mkLabel = strToBS
 
 data GInstruction a = GInstrI Char Int -- integer compile type constant
                     | GInstrE Char GExpr deriving Show -- dynamic value
@@ -39,8 +40,10 @@ newtype GCell = GCell Word deriving (Eq, Ord, Show)
 
 
 -- AST of concrete expression in ISO7
-data GExpr = G_Add GExpr GExpr | G_Sub GExpr GExpr | G_Mul GExpr GExpr | G_Div GExpr GExpr
-           | G_Gt GExpr GExpr | G_Eq GExpr GExpr | G_And GExpr GExpr | G_Or GExpr GExpr | G_Not GExpr
+data GExpr = G_Unary OpName GExpr
+           | G_Add GExpr GExpr | G_Sub GExpr GExpr | G_Mul GExpr GExpr | G_Div GExpr GExpr
+           | G_Gt GExpr GExpr | G_Eq GExpr GExpr
+           | G_And GExpr GExpr | G_Or GExpr GExpr | G_Not GExpr
            | G_Int Int | G_Float Float | G_Read GCell deriving Show
 
 type GopGen = Reader (Label -> Label)
@@ -49,7 +52,7 @@ gopGen :: GOperator -> GopGen Builder
 gopGen (GOps ops comment) = do cs <- mapM gopGen ops
                                let cmt = case comment of
                                      "" -> bs ""
-                                     str -> bs "( " <> bs (S.pack . map (toEnum . fromEnum) $ str) <> bs " )" <> endl
+                                     s -> bs "( " <> str s <> bs " )" <> endl
                                return $ cmt <> mconcat cs
 gopGen (GAssign cell expr) = return $ fromCell cell <> bs " = " <> gexprGen expr <> endl
 gopGen (GGoto label) = do trans <- ask
@@ -64,6 +67,7 @@ gopGen (GWhile k cond body) = do code <- gopGen body
                                    <> bs "END" <> fromShow k <> endl
 gopGen (GFrame codes) = return $ mconcat (intersperse (fromChar ' ') $ map ginstrGen codes) <> endl
 
+gexprGen (G_Unary op e) = str op <> bs " " <> bracket (gexprGen e)
 gexprGen (G_Add e1 e2) = bracket $ gexprGen e1 <> bs " + " <> gexprGen e2
 gexprGen (G_Sub e1 e2) = bracket $ gexprGen e1 <> bs " - " <> gexprGen e2
 gexprGen (G_Mul e1 e2) = bracket $ gexprGen e1 <> bs " * " <> gexprGen e2
@@ -80,11 +84,16 @@ gexprGen (G_Float i) = fromShow i
 ginstrGen (GInstrI c k) = fromChar c <> fromShow k
 ginstrGen (GInstrE c e) = fromChar c <> gexprGen e
 
+-- helpers
 bracket s = bs "[ " <> s <> bs " ]"
-
+-- conversion from basic types to builder
 fromCell (GCell n) = fromChar '#' <> fromShow n
 bs = fromByteString
+str = bs . strToBS
 endl = fromChar '\n'
 
+strToBS :: String -> S.ByteString
+strToBS = S.pack . map (toEnum . fromEnum)
+-- IO Printer
 putGOps :: (Label -> Label) -> GOperator -> IO ()
 putGOps label_trans g = LS.putStr $ toLazyByteString $ runReader (gopGen g) label_trans

@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
 module HCode(module HCode,
-             Cell, Expr, gRead) where
+             Cell, Expr, gRead, round') where
 
 import Expr
 import GCode

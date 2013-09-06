@@ -39,6 +39,7 @@ data Expr t where
   BoolE :: Bool -> Expr W.Bool
   IntE :: Integral t => t -> Expr t
   FloatE :: RealFrac t => t -> Expr t
+  Unary :: OpName -> Expr a -> Expr t
   Add :: Num t => Expr t -> Expr t -> Expr t
   Sub :: Num t => Expr t -> Expr t -> Expr t
   Mul :: Num t => Expr t -> Expr t -> Expr t
@@ -60,6 +61,11 @@ instance (Fractional t, ToExpr t) => Fractional(Expr t) where
   fromRational = toExpr . fromRational
   (/) = Div
 
+{-
+instance (Real (Expr t), Fractional (Expr t), ToExpr t) => RealFrac (Expr t) where
+  round = Unary "ROUND" ::
+-} -- FIXME, better define this, but how?
+
 instance W.BoolC Expr where
   false = BoolE False
   true  = BoolE True
@@ -74,11 +80,17 @@ instance W.Ord Expr a where
   (>) = Gt
   a < b = (W.>) b a
 
+-- Various gcode functions
+round' :: (Fractional a, Integral b) => Expr a -> Expr b
+round' = Unary "ROUND"
+
 -- Evaluating type-save Exprs to untyped GExprs suited for generation gcode
 eval :: Expr t -> GExpr
 eval (BoolE b) = G_Int . fromEnum $ b
 eval (IntE n) = G_Int $ fromIntegral n
 eval (FloatE n) = G_Float $ realToFrac n
+
+eval (Unary op e) = G_Unary op (eval e)
 
 eval (Add e1 e2) = G_Add (eval e1) (eval e2)
 eval (Sub e1 e2) = G_Sub (eval e1) (eval e2)
