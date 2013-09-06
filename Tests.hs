@@ -4,7 +4,8 @@ import GCode
 import HCode
 
 import AwePrelude
-import Prelude(Num(..), Int, ($), id, putStrLn)
+import Prelude(Num(..), Fractional(..), Floating(..), Int, ($), id, putStrLn, (++))
+import Control.Monad(mapM_)
 
 gcode_prog1 = GOps
   [ GLabel "start"
@@ -51,11 +52,34 @@ hcode_prog2 = do
       count #= (count + round' cur_x)
     cur_y #= (cur_y + step)
 
+hcode_poligon :: HCode ()
+hcode_poligon = do
+  cx <- newVar 100 # "center x"
+  cy <- newVar 50 # "center y"
+  rad <- newVar 20 # "radius"
+  vertices <- newVar 6
+  depth <- newVar 10 # "drill depth"
+
+  angle <- newVar 0
+  ver <- newVar 0
+  step <- newVarE $ 360 / vertices
+  while (ver < vertices + 1) $ do
+    frame [g 0, x $ cx + rad * cos angle, y $ cy + rad * sin angle]
+    frame [g 1, z depth]
+    frame [g 0, z 0]
+    angle #= (angle + step)
+
+samples = [ (hcode_prog1, "Example1"),
+            (hcode_prog2, "Example2"),
+            (hcode_poligon, "Poligon drawer") ]
+
 main = do
   putStrLn "***** GCode example: \n\n"
   putGOps id gcode_prog1
-  putStrLn "\n***** HCode example: \n\n"
-  gcodeGen hcode_prog1
 
-  putStrLn "\n***** HCode example2: \n\n"
-  gcodeGen hcode_prog2
+  mapM_ gen_sample samples
+
+ where gen_sample (code, descr) = do
+         putStrLn $ "***** " ++ descr ++ ":"
+         gcodeGen code
+         putStrLn $ "***** " ++ descr ++ " Output finished\n"
