@@ -122,6 +122,7 @@ gIf pred branch = do
   gen $ GIf gp code
 
 -- emits Assignment
+infixr 1 #=
 (#=) :: Expr a -> Expr a -> HCode ()
 (#=) (Read c) e = gen $ GAssign (unCell c) (eval e)
 (#=) _ e = error "Left side of an assignment must be a variable"
@@ -155,6 +156,7 @@ frame :: [GInstruction ()] -> HCode ()
 frame = gen . GFrame
 
 -- Emits comment
+infix 0 #
 (#) :: HCode a -> String -> HCode a
 code # comment = do
   r <- code

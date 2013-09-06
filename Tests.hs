@@ -44,13 +44,13 @@ hcode_prog2 = do
   count <- newVar (0 :: Int)
   while (cur_x < 100) $ do
     while (cur_y < 200) $ do
-      count #= (count + 1)
+      count #= count + 1
       frame [g 100, f (speed), s (speed2), x $ cur_x, y $ cur_y] # "fast move"
       frame [g 101, z 0]
       frame [g 100, z 20] # "drilling down"
-      cur_x #= (cur_x + step)
-      count #= (count + round' cur_x)
-    cur_y #= (cur_y + step)
+      cur_x #= cur_x + step
+      count #= count + round' cur_x # "just to test a round op"
+    cur_y #= cur_y + step
 
 hcode_poligon :: HCode ()
 hcode_poligon = do
@@ -67,7 +67,7 @@ hcode_poligon = do
     frame [g 0, x $ cx + rad * cos angle, y $ cy + rad * sin angle]
     frame [g 1, z depth]
     frame [g 0, z 0]
-    angle #= (angle + step)
+    angle #= angle + step
 
 samples = [ (hcode_prog1, "Example1"),
             (hcode_prog2, "Example2"),
