@@ -96,11 +96,17 @@ allocate mgcell = do
   L.puts gsc_vars vm
   return $ Cell c
 
--- Creates a variable with a given name
+-- Creates a variable with a given name and initialize it with compile time constant
 newVar :: ToExpr t => t -> HCode (Expr t)
 newVar v0 = do n <- gRead <$> allocate Nothing
                n #= (toExpr v0)
                return n
+
+-- Creates a variable and initializes it with an expression value
+newVarE :: Expr t -> HCode (Expr t)
+newVarE v0 = do n <- gRead <$> allocate Nothing
+                n #= v0
+                return n
 
 
 -- Gives a name to a cell

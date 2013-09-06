@@ -1,4 +1,5 @@
-{-# LANGUAGE GADTs, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs, FlexibleInstances, MultiParamTypeClasses,
+             FlexibleContexts, UndecidableInstances #-}
 module Expr where
 
 import GCode
@@ -65,6 +66,12 @@ instance (Fractional t, ToExpr t) => Fractional(Expr t) where
 instance (Real (Expr t), Fractional (Expr t), ToExpr t) => RealFrac (Expr t) where
   round = Unary "ROUND" ::
 -} -- FIXME, better define this, but how?
+
+instance (Num t, ToExpr t, Floating t, Fractional (Expr t)) => Floating (Expr t) where
+  pi = toExpr pi
+  sin = Unary "SIN"
+  cos = Unary "COS"
+  tan = Unary "TAN"
 
 instance W.BoolC Expr where
   false = BoolE False
