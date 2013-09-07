@@ -49,7 +49,7 @@ hcode_prog2 = do
       frame [g 101, z 0]
       frame [g 100, z 20] # "drilling down"
       cur_x #= cur_x + step
-      count #= count + round' cur_x # "just to test a round op"
+      count #= count + fix cur_x # "just to test a round op"
     cur_y #= cur_y + step
 
 hcode_poligon :: HCode ()

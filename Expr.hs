@@ -40,7 +40,8 @@ data Expr t where
   BoolE :: Bool -> Expr W.Bool
   IntE :: Integral t => t -> Expr t
   FloatE :: RealFrac t => t -> Expr t
-  Unary :: OpName -> Expr a -> Expr t
+  Unary :: OpName -> Expr a -> Expr a
+  Cast :: Expr a -> Expr t
   Add :: Num t => Expr t -> Expr t -> Expr t
   Sub :: Num t => Expr t -> Expr t -> Expr t
   Mul :: Num t => Expr t -> Expr t -> Expr t
@@ -88,8 +89,14 @@ instance W.Ord Expr a where
   a < b = (W.>) b a
 
 -- Various gcode functions
-round' :: (Fractional a, Integral b) => Expr a -> Expr b
-round' = Unary "ROUND"
+fix :: (Fractional a, Integral b) => Expr a -> Expr b
+fix = Cast . Unary "FIX"
+
+fup :: (Fractional a, Integral b) => Expr a -> Expr b
+fup = Cast . Unary "FUP"
+
+fi :: (Integral a) => Expr a -> Expr Double
+fi = Cast
 
 -- Evaluating type-save Exprs to untyped GExprs suited for generation gcode
 eval :: Expr t -> GExpr
@@ -98,6 +105,7 @@ eval (IntE n) = G_Int $ fromIntegral n
 eval (FloatE n) = G_Float $ realToFrac n
 
 eval (Unary op e) = G_Unary op (eval e)
+eval (Cast e) = eval e
 
 eval (Add e1 e2) = G_Add (eval e1) (eval e2)
 eval (Sub e1 e2) = G_Sub (eval e1) (eval e2)
