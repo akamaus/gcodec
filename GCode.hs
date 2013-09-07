@@ -36,15 +36,20 @@ mkLabel = strToBS
 data GInstruction a = GInstrI Char Int -- integer compile type constant
                     | GInstrE Char GExpr deriving Show -- dynamic value
 
-newtype GCell = GCell Word deriving (Eq, Ord, Show)
+type TableName = S.ByteString
+mkTableName :: String -> TableName
+mkTableName = strToBS
 
+data GCell = GCell Word -- regular numeric
+           | GTable TableName GExpr -- symbolic table macro variable
+           deriving (Eq, Ord, Show)
 
 -- AST of concrete expression in ISO7
 data GExpr = G_Unary OpName GExpr
            | G_Add GExpr GExpr | G_Sub GExpr GExpr | G_Mul GExpr GExpr | G_Div GExpr GExpr
            | G_Gt GExpr GExpr | G_Eq GExpr GExpr
            | G_And GExpr GExpr | G_Or GExpr GExpr | G_Not GExpr
-           | G_Int Int | G_Float Float | G_Read GCell deriving Show
+           | G_Int Int | G_Float Float | G_Read GCell deriving (Eq, Ord, Show)
 
 type GopGen = Reader (Label -> Label)
 
@@ -54,7 +59,7 @@ gopGen (GOps ops comment) = do cs <- mapM gopGen ops
                                      "" -> bs ""
                                      s -> bs "( " <> str s <> bs " )" <> endl
                                return $ cmt <> mconcat cs
-gopGen (GAssign cell expr) = return $ fromCell cell <> bs " = " <> gexprGen expr <> endl
+gopGen (GAssign cell expr) = return $ gcellGen cell <> bs " = " <> gexprGen expr <> endl
 gopGen (GGoto label) = do trans <- ask
                           return $ bs "GOTO " <> bs (trans label) <> endl
 gopGen (GLabel label) = do trans <- ask
@@ -77,17 +82,19 @@ gexprGen (G_Eq e1 e2) = bracket $ gexprGen e1 <> bs " EQ " <> gexprGen e2
 gexprGen (G_And e1 e2) = bracket $ gexprGen e1 <> bs " AND " <> gexprGen e2
 gexprGen (G_Or e1 e2) =  bracket $ gexprGen e1 <> bs " OR "  <> gexprGen e2
 gexprGen (G_Not e) =  bs "NOT "  <> gexprGen e
-gexprGen (G_Read cell) = fromCell cell
+gexprGen (G_Read cell) = gcellGen cell
 gexprGen (G_Int i) = fromShow i
 gexprGen (G_Float i) = fromShow i
 
 ginstrGen (GInstrI c k) = fromChar c <> fromShow k
 ginstrGen (GInstrE c e) = fromChar c <> gexprGen e
 
+gcellGen (GCell n) = fromChar '#' <> fromShow n
+gcellGen (GTable t e) = fromChar '#' <> bs t <> bracket (gexprGen e)
+
 -- helpers
 bracket s = bs "[ " <> s <> bs " ]"
 -- conversion from basic types to builder
-fromCell (GCell n) = fromChar '#' <> fromShow n
 bs = fromByteString
 str = bs . strToBS
 endl = fromChar '\n'

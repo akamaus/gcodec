@@ -59,14 +59,17 @@ hcode_poligon = do
   rad <- newVar 20 # "radius"
   vertices <- newVar 6
   depth <- newVar 10 # "drill depth"
+  instr <- newVar 1 # "instrument to use"
+  lengths <- sysTable "_INSTR_LEN"
 
   angle <- newVar 0
   ver <- newVar 0
   step <- newVarE $ 360 / vertices
   while (ver < vertices + 1) $ do
     frame [g 0, x $ cx + rad * cos angle, y $ cy + rad * sin angle]
-    frame [g 1, z depth]
+    frame [g 1, z $ depth + lengths instr]
     frame [g 0, z 0]
+    lengths instr #= lengths instr - 0.01 # "compensate instrument wearing"
     angle #= angle + step
 
 samples = [ (hcode_prog1, "Example1"),

@@ -106,6 +106,11 @@ newVarE v0 = do n <- gRead <$> vm_allocate gsc_vars VR_FreeCommon
 sysVar :: Word -> HCode (Expr t)
 sysVar cell_num = gRead <$> vm_allocate gsc_vars (VR_System (GCell cell_num))
 
+-- Declares a system table
+sysTable :: String -> HCode (Expr Int -> Expr t)
+sysTable name = do let table e = GTable (mkTableName name) (eval e)
+                   return $ gRead . Cell . table
+
 -- HCode instructions
 -- emits If
 gIf :: Expr W.Bool -> HCode () -> HCode ()
