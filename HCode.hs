@@ -90,29 +90,21 @@ gcodeGen gcode = do
 --  EDSL primitives
 -- *****************
 
--- Allocates a given cell or any free one
-allocate :: Maybe GCell -> HCode (Cell t)
-allocate mgcell = do
-  (c@(GCell n), vm) <- (vm_allocate mgcell) <$> L.gets gsc_vars
-  L.puts gsc_vars vm
-  return $ Cell c
-
 -- Creates a variable with a given name and initialize it with compile time constant
 newVar :: ToExpr t => t -> HCode (Expr t)
-newVar v0 = do n <- gRead <$> allocate Nothing
+newVar v0 = do n <- gRead <$> vm_allocate gsc_vars VR_FreeCommon
                n #= (toExpr v0)
                return n
 
 -- Creates a variable and initializes it with an expression value
 newVarE :: Expr t -> HCode (Expr t)
-newVarE v0 = do n <- gRead <$> allocate Nothing
+newVarE v0 = do n <- gRead <$> vm_allocate gsc_vars VR_FreeCommon
                 n #= v0
                 return n
 
-
 -- Gives a name to a cell
-nameCell :: Word -> HCode (Expr t)
-nameCell cell_num = gRead <$> allocate (Just $ GCell cell_num)
+sysVar :: Word -> HCode (Expr t)
+sysVar cell_num = gRead <$> vm_allocate gsc_vars (VR_System (GCell cell_num))
 
 -- HCode instructions
 -- emits If

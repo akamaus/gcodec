@@ -22,8 +22,8 @@ gcode_prog1 = GOps
 hcode_prog1 :: HCode ()
 hcode_prog1 = do
   label "start"
-  var101 <- nameCell 101
-  var100 <- nameCell 100
+  var101 <- sysVar 5101
+  var100 <- sysVar 5102
   var101 #= (var101 + 42)
   frame [g 1, z (var101), y (var100), z 20]
   var100 #= (var100 - 5)
