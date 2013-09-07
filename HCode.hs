@@ -63,7 +63,8 @@ saving l m = do
 
 -- Generates a code block and returns it
 local_block :: HCode () -> HCode GOperator
-local_block = liftM snd . RWS.censor (\(w,e,c) -> (w,e,RWS.mempty)) . RWS.listens (\(_,_,c) -> c)
+local_block block = do genAccumulated
+                       liftM snd . RWS.censor (\(w,e,c) -> (w,e,RWS.mempty)) . RWS.listens (\(_,_,c) -> c) $ block >> genAccumulated
 
 -- Validated labels mentioned in generated code
 check_labels :: HCode ()
