@@ -168,12 +168,13 @@ code # comment = do
   return r
 
 class CInstruction con where
-  g :: Int -> con ()
+  g :: Expr Int -> con ()
   m :: Int -> con ()
+  t :: Expr Int -> con ()
   s :: Expr Double -> con ()
   f :: Expr Double -> con ()
   d :: Int -> con ()
-  h :: Int -> con ()
+  h :: Expr Int -> con ()
   x :: Expr Double -> con ()
   y :: Expr Double -> con ()
   z :: Expr Double -> con ()
@@ -181,14 +182,18 @@ class CInstruction con where
   j :: Expr Double -> con ()
   k :: Expr Double -> con ()
   r :: Expr Double -> con ()
+  p :: Expr Double -> con ()
+  l :: Int -> con ()
+
 
 instance CInstruction GInstruction where
-  g = check_diap 0 199 .  GInstrI 'G'
-  m = check_diap 0 99  .  GInstrI 'M'
+  g = GInstrE 'G' . eval
+  m = check_diap 0 200 . GInstrI 'M'
+  t = GInstrE 'T' . eval
   s = GInstrE 'S' . eval
   f = GInstrE 'F' . eval
   d = check_diap 0 1000 . GInstrI 'D'
-  h = check_diap 0 1000 . GInstrI 'H'
+  h = GInstrE 'H' . eval
   x = GInstrE 'X' . eval
   y = GInstrE 'Y' . eval
   z = GInstrE 'Z' . eval
@@ -196,21 +201,26 @@ instance CInstruction GInstruction where
   j = GInstrE 'J' . eval
   k = GInstrE 'K' . eval
   r = GInstrE 'R' . eval
+  p = GInstrE 'P' . eval
+  l = GInstrI 'L'
 
 check_diap a b instr@(GInstrI c k) | k < a && k > b = error $ printf "Code %c must be in diapason %d-%d, but %d given" c a b k
                                    | otherwise = instr
 
 instance CInstruction HCode where
-  g i = frame [g i]
-  m i = frame [m i]
-  s expr = frame [s expr]
-  f expr = frame [f expr]
-  d i = frame [d i]
-  h i = frame [h i]
-  x expr = frame [x expr]
-  y expr = frame [y expr]
-  z expr = frame [z expr]
-  i expr = frame [i expr]
-  j expr = frame [j expr]
-  k expr = frame [k expr]
-  r expr = frame [r expr]
+  g attr = frame [g attr]
+  m attr = frame [m attr]
+  t attr = frame [t attr]
+  s attr = frame [s attr]
+  f attr = frame [f attr]
+  d attr = frame [d attr]
+  h attr = frame [h attr]
+  x attr = frame [x attr]
+  y attr = frame [y attr]
+  z attr = frame [z attr]
+  i attr = frame [i attr]
+  j attr = frame [j attr]
+  k attr = frame [k attr]
+  r attr = frame [r attr]
+  p attr = frame [p attr]
+  l attr = frame [l attr]
