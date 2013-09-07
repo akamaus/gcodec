@@ -6,36 +6,12 @@ import HCode
 import AwePrelude
 import Prelude(Num(..), Fractional(..), Floating(..), Int, Double, ($), id, putStrLn, return)
 
-gcode_prog1 = GOps
-  [ GLabel "start"
-  , GAssign (GCell 101) (G_Add (G_Read $ GCell 101) (G_Int 42))
-  , GFrame [GInstrI 'G' 1, GInstrE 'X' (G_Read $ GCell 101), GInstrE 'Y' (G_Read $ GCell 100), GInstrE 'Z' (G_Int 20)]
-  , GAssign (GCell 100) (G_Sub (G_Read $ GCell 100) (G_Int 5))
-  , GIf (G_Gt (G_Read (GCell 100)) (G_Int 0))
-      (GGoto "start")
-  , GLabel "end"
-  , GFrame [GInstrI 'M' 100]
-  , GOps [GFrame [GInstrI 'M' 30]] ""
-  ] "a test program"
-
-hcode_prog1 :: HCode ()
-hcode_prog1 = do
-  label "start"
-  var101 <- nameCell 101
-  var100 <- nameCell 100
-  var101 #= (var101 + 42)
-  frame [g 1, z (var101), y (var100), z 20]
-  var100 #= (var100 - 5)
-  gIf (var100 > 0)
-    (goto "start")
-  m 30 # "stop operation"
-  label "end"
-
 comment str = (return ()) # str
 
 hcode_prog2 :: HCode ()
 hcode_prog2 = do
 -- блок переменных
+  ofs_table <- sysTable "_OFS"
   parallelHigh <- newVar (45.97 :: Double) # "Visota paraleli"
   comment "Razmeri detali"
   partHigh <- newVar (55.0 :: Double) # "Visota zagotovoki"
@@ -56,11 +32,10 @@ hcode_prog2 = do
   fastLinear <- newVar (1 :: Int) # "uskorenoe dvijenie: medlenno 1, bitsro 0"
   countXY <- newVar (0 :: Int)
   countZ <- newVar (0 :: Int)
-  cur_x <- nameCell 5001
-  cur_y <- nameCell 5002
-  cur_z <- nameCell 5003
-  cur_d <- nameCell 2001
---  cur_d <- nameCell _OFS[nameTool] FIXME
+  cur_x <- sysVar 5001
+  cur_y <- sysVar 5002
+  cur_z <- sysVar 5003
+  cur_d <- newVarE $ ofs_table nameTool
   fullHigh <- newVar (200.0 :: Double)
   numStepsXY <- newVarE $ fup $ parallelHigh + partHigh + h_oversize {- Целых шагов по XY округлить до целых вверх #-}
   numStepsZ <- newVarE $ fix $ (partHigh + h_oversize) / stepZ  {- Целых шагов по Z Округлить до целых вниз #-}
@@ -119,10 +94,5 @@ hcode_prog2 = do
 
 
 main = do
-  putStrLn "***** GCode example: \n\n"
-  putGOps id gcode_prog1
-  putStrLn "\n***** HCode example: \n\n"
-  gcodeGen hcode_prog1
-
-  putStrLn "\n***** HCode example2: \n\n"
+  putStrLn "\n***** Production: \n\n"
   gcodeGen hcode_prog2
