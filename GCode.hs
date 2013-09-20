@@ -19,6 +19,7 @@ data GOperator = GOps [GOperator] Comment | GLabel Label | GAssign GCell GExpr
 
 type Comment = String
 type OpName = String
+type RealT = Float
 
 instance Monoid GOperator where
   mempty = GOps [] []
@@ -49,7 +50,7 @@ data GExpr = G_Unary OpName GExpr
            | G_Add GExpr GExpr | G_Sub GExpr GExpr | G_Mul GExpr GExpr | G_Div GExpr GExpr
            | G_Gt GExpr GExpr | G_Eq GExpr GExpr
            | G_And GExpr GExpr | G_Or GExpr GExpr | G_Not GExpr
-           | G_Int Int | G_Float Float | G_Read GCell deriving (Eq, Ord, Show)
+           | G_Int Int | G_Float RealT | G_Read GCell deriving (Eq, Ord, Show)
 
 type GopGen = Reader (Label -> Label)
 
