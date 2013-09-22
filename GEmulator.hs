@@ -20,6 +20,7 @@ type GTrace = [Move]
 interpret :: GOperator -> IO GTrace
 interpret prog = do
   [x,y,z] <- sequence $ replicate 3 $ newIORef 0
+  fast_move <- newIORef False
   feed <- newIORef 0
   instr <- newIORef 0
   gtrace <- newIORef []
@@ -33,6 +34,11 @@ interpret prog = do
                                               | axe == 'Y' = run_move y expr rest act
                                               | axe == 'Z' = run_move z expr rest act
       run_frame (GInstrE 'F' expr : rest) act = writeIORef feed (get_float expr) >> run_frame rest act
+      run_frame (GInstrE 'G' expr : rest) act = do case get_float expr of
+                                                     0 -> writeIORef fast_move True
+                                                     1 -> writeIORef fast_move False
+                                                     n -> warn $ "Ignoring gcode " ++ show n
+                                                   run_frame rest act
       run_frame (GInstrE axe expr : rest) act = do warn $ "skipping axe" ++ show axe
                                                    run_frame rest act
       run_frame (instr:rest) act = do warn $ "skipping instruction " ++ show instr
