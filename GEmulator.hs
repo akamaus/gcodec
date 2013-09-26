@@ -8,13 +8,18 @@ import Control.Monad.Trans
 
 import Data.Int
 import Data.IORef
+import Data.Maybe
+import qualified Data.Map as M
 import System.IO
 import Text.Printf
 
 data Pos = Pos {px :: RealT, py :: RealT, pz :: RealT} deriving (Show,Eq)
+newtype Tool = Tool Int deriving (Show, Eq, Ord)
+data Move = Move { m_p1 :: Pos, m_p2 :: Pos, m_feed::RealT, m_tool :: Maybe Tool } deriving Show
 
-data Move = Move { m_p1 :: Pos, m_p2 :: Pos, m_feed::RealT} deriving Show
 type GTrace = [Move]
+
+fastSpeed = 20000 :: RealT
 
 macroToIso7 :: GOperator -> Iso7Program
 macroToIso7 op = Iso7Program {ipName = "UNKNOWN", ipCode = interpretMacro' op}
@@ -34,7 +39,7 @@ iso7ToMoves (Iso7Program name frames) = do
   [x,y,z] <- sequence $ replicate 3 $ newIORef 0
   fast_move <- newIORef False
   feed <- newIORef 0
-  instr <- newIORef 0
+  tool <- newIORef (Just $ Tool 1)
   let run_frame (IFrame codes) = do moves <- proc_frame codes (return ())
                                     read_effect moves
       proc_frame [] act = return act
@@ -54,14 +59,37 @@ iso7ToMoves (Iso7Program name frames) = do
         p1 <- read_pos
         moves
         p2 <- read_pos
-        f <- readIORef feed
-        return $ Move p1 p2 f
+        fast <- readIORef fast_move
+        f <- case fast of
+          False -> readIORef feed
+          True -> return fastSpeed
+        t <- case fast of
+          False -> readIORef tool
+          True -> return Nothing
+        return $ Move p1 p2 f t
       read_pos = do
         [xx,yy,zz] <- mapM readIORef [x,y,z]
         return $ Pos xx yy zz
   mapM run_frame frames
 
+data ProgramStatistics = ProgramStatistics {
+  ps_time :: RealT,
+  ps_tool_carve_stats :: M.Map Tool RealT,
+  ps_move_dist :: RealT
+  } deriving (Show)
+
+iso7stats = iso7stats' 0 M.empty
+
+iso7stats' time tool_map [] = ProgramStatistics { ps_time = time, ps_tool_carve_stats = tool_stats, ps_move_dist = move_dist }
+  where tool_stats = M.mapKeys fromJust $ M.filterWithKey (\k _ -> isJust k) tool_map
+        move_dist = fromMaybe 0 $ M.lookup Nothing tool_map
+iso7stats' time tool_map (Move p1 p2 feed tool : moves) = iso7stats' (time + dt) tool_map' moves
+  where tool_map' = M.insertWith (+) tool dt tool_map
+        dt = dist p1 p2 / feed
+
 warn msg = hPutStrLn stderr msg
+
+dist (Pos x1 y1 z1) (Pos x2 y2 z2) = sum $ map (^2) $ zipWith (-) [x1,y1,z1] [x2,y2,z2]
 
 get_float (G_Float f) = f
 get_float x = error $ printf "can't get contents of %s as Float" (show x)
