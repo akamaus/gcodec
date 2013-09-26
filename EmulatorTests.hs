@@ -14,12 +14,15 @@ prog1 = do
   frame [g 1, y 10]
   frame [g 1, z 10]
 
-
-
 main = do
   Just (_, gcode) <- gcodeGen prog1
   putStrLn $ "***** gcode:"
   putHCode prog1
+  let iso_code = interpretMacro gcode
+  putStrLn "*** iso code:"
+  print iso_code
   gtrace  <- interpret gcode
   putStrLn "*** gtrace:"
   print gtrace
+  print "****parsed gcode"
+--  let bs = gcodeToBS

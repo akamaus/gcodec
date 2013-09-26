@@ -1,21 +1,33 @@
 module GEmulator where
 
 import GCode
+import GParser
 
-import Data.Array.ST
-import Data.STRef
-import Control.Monad.ST
-import Control.Monad.Writer.Strict
+import Control.Monad.Writer
 import Control.Monad.Trans
 
 import Data.Int
 import Data.IORef
 import System.IO
+import Text.Printf
 
 data Pos = Pos {px :: RealT, py :: RealT, pz :: RealT} deriving (Show,Eq)
 
 data Move = Move { m_p1 :: Pos, m_p2 :: Pos, m_feed::RealT} deriving Show
 type GTrace = [Move]
+
+interpretMacro :: GOperator -> Iso7Program
+interpretMacro op = Iso7Program {ipName = "UNKNOWN", ipCode = interpretMacro' op}
+  where
+    interpretMacro' :: GOperator -> [IFrame]
+    interpretMacro' prog = case prog of
+      GOps ops _ -> concatMap interpretMacro' ops
+      GFrame codes -> [IFrame $ map interpretInstr codes]
+      x -> error $ "can't interpter operator " ++ show x
+    interpretInstr instr = case instr of
+      GInstrE c (G_Float f) -> InstrF c f
+      GInstrE c (G_Int i)   -> InstrI c i
+      x -> error $ "can't interpret instruction " ++ show x
 
 interpret :: GOperator -> IO GTrace
 interpret prog = do
@@ -34,7 +46,7 @@ interpret prog = do
                                               | axe == 'Y' = run_move y expr rest act
                                               | axe == 'Z' = run_move z expr rest act
       run_frame (GInstrE 'F' expr : rest) act = writeIORef feed (get_float expr) >> run_frame rest act
-      run_frame (GInstrE 'G' expr : rest) act = do case get_float expr of
+      run_frame (GInstrE 'G' expr : rest) act = do case get_int expr of
                                                      0 -> writeIORef fast_move True
                                                      1 -> writeIORef fast_move False
                                                      n -> warn $ "Ignoring gcode " ++ show n
@@ -61,4 +73,7 @@ interpret prog = do
 warn msg = hPutStrLn stderr msg
 
 get_float (G_Float f) = f
-get_float x = error $ "can't get contents of " ++ show x
+get_float x = error $ printf "can't get contents of %s as Float" (show x)
+
+get_int (G_Int i) = i
+get_int x = error $ printf "can't get contents of %s as Int" (show x)
