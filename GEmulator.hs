@@ -16,8 +16,8 @@ data Pos = Pos {px :: RealT, py :: RealT, pz :: RealT} deriving (Show,Eq)
 data Move = Move { m_p1 :: Pos, m_p2 :: Pos, m_feed::RealT} deriving Show
 type GTrace = [Move]
 
-interpretMacro :: GOperator -> Iso7Program
-interpretMacro op = Iso7Program {ipName = "UNKNOWN", ipCode = interpretMacro' op}
+macroToIso7 :: GOperator -> Iso7Program
+macroToIso7 op = Iso7Program {ipName = "UNKNOWN", ipCode = interpretMacro' op}
   where
     interpretMacro' :: GOperator -> [IFrame]
     interpretMacro' prog = case prog of
@@ -29,33 +29,27 @@ interpretMacro op = Iso7Program {ipName = "UNKNOWN", ipCode = interpretMacro' op
       GInstrE c (G_Int i)   -> InstrI c i
       x -> error $ "can't interpret instruction " ++ show x
 
-interpret :: GOperator -> IO GTrace
-interpret prog = do
+iso7ToMoves :: Iso7Program -> IO GTrace
+iso7ToMoves (Iso7Program name frames) = do
   [x,y,z] <- sequence $ replicate 3 $ newIORef 0
   fast_move <- newIORef False
   feed <- newIORef 0
   instr <- newIORef 0
-  gtrace <- newIORef []
-  let run (GOps ops _) = mapM_ run ops
-      run (GFrame codes) = do moves <- run_frame codes (return ())
-                              eff <- read_effect moves
-                              modifyIORef' gtrace (eff:)
-      run x = fail $ "interpreter is incompete, can't run " ++ show x
-      run_frame [] act = return act
-      run_frame (GInstrE axe expr : rest) act | axe == 'X' = run_move x expr rest act
-                                              | axe == 'Y' = run_move y expr rest act
-                                              | axe == 'Z' = run_move z expr rest act
-      run_frame (GInstrE 'F' expr : rest) act = writeIORef feed (get_float expr) >> run_frame rest act
-      run_frame (GInstrE 'G' expr : rest) act = do case get_int expr of
-                                                     0 -> writeIORef fast_move True
-                                                     1 -> writeIORef fast_move False
-                                                     n -> warn $ "Ignoring gcode " ++ show n
-                                                   run_frame rest act
-      run_frame (GInstrE axe expr : rest) act = do warn $ "skipping axe" ++ show axe
-                                                   run_frame rest act
-      run_frame (instr:rest) act = do warn $ "skipping instruction " ++ show instr
-                                      run_frame rest act
-      run_move axe expr rest act = run_frame rest $ (act >> writeIORef axe (get_float expr))
+  let run_frame (IFrame codes) = do moves <- proc_frame codes (return ())
+                                    read_effect moves
+      proc_frame [] act = return act
+      proc_frame (InstrF axe val : rest) act | axe == 'X' = proc_move x val rest act
+                                             | axe == 'Y' = proc_move y val rest act
+                                             | axe == 'Z' = proc_move z val rest act
+      proc_frame (InstrF 'F' val : rest) act = writeIORef feed val >> proc_frame rest act
+      proc_frame (InstrI 'G' val : rest) act = do case val of
+                                                    0 -> writeIORef fast_move True
+                                                    1 -> writeIORef fast_move False
+                                                    n -> warn $ "Ignoring gcode " ++ show n
+                                                  proc_frame rest act
+      proc_frame (instr:rest) act = do warn $ "skipping instruction " ++ show instr
+                                       proc_frame rest act
+      proc_move axe val rest act = proc_frame rest $ (act >> writeIORef axe val)
       read_effect moves = do
         p1 <- read_pos
         moves
@@ -65,10 +59,7 @@ interpret prog = do
       read_pos = do
         [xx,yy,zz] <- mapM readIORef [x,y,z]
         return $ Pos xx yy zz
-  run prog
-  trace <- readIORef gtrace
-  return $ reverse trace
-
+  mapM run_frame frames
 
 warn msg = hPutStrLn stderr msg
 

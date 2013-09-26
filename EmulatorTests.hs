@@ -18,10 +18,10 @@ main = do
   Just (_, gcode) <- gcodeGen prog1
   putStrLn $ "***** gcode:"
   putHCode prog1
-  let iso_code = interpretMacro gcode
+  let iso_code = macroToIso7 gcode
   putStrLn "*** iso code:"
   print iso_code
-  gtrace  <- interpret gcode
+  gtrace  <- iso7ToMoves iso_code
   putStrLn "*** gtrace:"
   print gtrace
   print "****parsed gcode"
