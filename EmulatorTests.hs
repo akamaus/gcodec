@@ -33,11 +33,13 @@ test = do
 evaluateIsoFile :: FilePath -> IO ProgramStatistics
 evaluateIsoFile file = do
   parsed <- parseIsoFile file
+--  print parsed
   case parsed of
     Right iso -> do
       prog_trace <- iso7ToMoves iso
       return $ iso7stats prog_trace
-    Left err -> fail err
+    Left err -> do putStrLn $ "Error parsing: " ++ show err
+                   fail err
 
 main = do
   [file] <- getArgs

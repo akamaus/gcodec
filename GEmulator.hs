@@ -85,10 +85,12 @@ iso7stats' time tool_map [] = ProgramStatistics { ps_time = time, ps_tool_carve_
         move_dist = fromMaybe 0 $ M.lookup Nothing tool_map
 iso7stats' time tool_map (Move p1 p2 feed tool : moves) = iso7stats' (time + dt) tool_map' moves
   where tool_map' = M.insertWith (+) tool dt tool_map
-        dt = dist p1 p2 / feed
+        dst = dist p1 p2
+        dt = if dst < eps then 0 else dist p1 p2 / feed
 
 warn msg = hPutStrLn stderr msg
 
+eps = 10**(-6) :: RealT
 dist (Pos x1 y1 z1) (Pos x2 y2 z2) = sum $ map (^2) $ zipWith (-) [x1,y1,z1] [x2,y2,z2]
 
 get_float (G_Float f) = f
