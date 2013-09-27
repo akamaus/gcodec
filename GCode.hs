@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module  GCode where
 
+import Geometry(RealT)
+
 import Blaze.ByteString.Builder
 import Blaze.ByteString.Builder.Char.Utf8(fromChar, fromShow)
 import Control.Monad.RWS
@@ -19,7 +21,6 @@ data GOperator = GOps [GOperator] Comment | GLabel Label | GAssign GCell GExpr
 
 type Comment = String
 type OpName = String
-type RealT = Float
 
 instance Monoid GOperator where
   mempty = GOps [] []
@@ -50,7 +51,7 @@ data GExpr = G_Unary OpName GExpr
            | G_Add GExpr GExpr | G_Sub GExpr GExpr | G_Mul GExpr GExpr | G_Div GExpr GExpr
            | G_Gt GExpr GExpr | G_Eq GExpr GExpr
            | G_And GExpr GExpr | G_Or GExpr GExpr | G_Not GExpr
-           | G_Int Int | G_Float RealT | G_Read GCell deriving (Eq, Ord, Show)
+           | G_Int Int | G_Real RealT | G_Read GCell deriving (Eq, Ord, Show)
 
 type GopGen = Reader (Label -> Label)
 
@@ -85,7 +86,7 @@ gexprGen (G_Or e1 e2) =  bracket $ gexprGen e1 <> bs " OR "  <> gexprGen e2
 gexprGen (G_Not e) =  bs "NOT "  <> gexprGen e
 gexprGen (G_Read cell) = gcellGen cell
 gexprGen (G_Int i) = fromShow i
-gexprGen (G_Float i) = fromShow i
+gexprGen (G_Real i) = fromShow i
 
 ginstrGen (GInstrI c k) = fromChar c <> fromShow k
 ginstrGen (GInstrE c e) = fromChar c <> gexprGen e
@@ -102,6 +103,10 @@ endl = fromChar '\n'
 
 strToBS :: String -> S.ByteString
 strToBS = S.pack . map (toEnum . fromEnum)
+
+gcodeToBS :: (Label -> Label) -> GOperator -> LS.ByteString
+gcodeToBS label_trans g = toLazyByteString $ runReader (gopGen g) label_trans
+
 -- IO Printer
 putGOps :: (Label -> Label) -> GOperator -> IO ()
-putGOps label_trans g = LS.putStr $ toLazyByteString $ runReader (gopGen g) label_trans
+putGOps label_trans = LS.putStr . gcodeToBS label_trans
