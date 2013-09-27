@@ -102,6 +102,10 @@ endl = fromChar '\n'
 
 strToBS :: String -> S.ByteString
 strToBS = S.pack . map (toEnum . fromEnum)
+
+gcodeToBS :: (Label -> Label) -> GOperator -> LS.ByteString
+gcodeToBS label_trans g = toLazyByteString $ runReader (gopGen g) label_trans
+
 -- IO Printer
 putGOps :: (Label -> Label) -> GOperator -> IO ()
-putGOps label_trans g = LS.putStr $ toLazyByteString $ runReader (gopGen g) label_trans
+putGOps label_trans = LS.putStr . gcodeToBS label_trans
