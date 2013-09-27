@@ -1,5 +1,7 @@
 module GParser(Iso7Program(..), Instr(..), IFrame(..), parseIsoFile) where
 
+import Geometry(RealT)
+
 import Data.Attoparsec.Text
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as T
@@ -8,7 +10,7 @@ import Data.Char
 import Control.Applicative
 import Data.Maybe
 
-data Instr = InstrI Char Int | InstrF Char Float deriving Show
+data Instr = InstrI Char Int | InstrF Char RealT deriving Show
 newtype IFrame = IFrame [Instr] deriving Show
 
 data Iso7Program = Iso7Program {ipName :: String, ipCode :: [IFrame]} deriving Show

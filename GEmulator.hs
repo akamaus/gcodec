@@ -1,6 +1,7 @@
 module GEmulator where
 
 import GCode
+import Geometry
 import GParser
 
 import Control.Monad.Writer
@@ -13,7 +14,6 @@ import qualified Data.Map as M
 import System.IO
 import Text.Printf
 
-data Pos = Pos {px :: RealT, py :: RealT, pz :: RealT} deriving (Show,Eq)
 newtype Tool = Tool Int deriving (Show, Eq, Ord)
 data Move = Move { m_p1 :: Pos, m_p2 :: Pos, m_feed::RealT, m_tool :: Maybe Tool } deriving Show
 
@@ -30,7 +30,7 @@ macroToIso7 op = Iso7Program {ipName = "UNKNOWN", ipCode = interpretMacro' op}
       GFrame codes -> [IFrame $ map interpretInstr codes]
       x -> error $ "can't interpter operator " ++ show x
     interpretInstr instr = case instr of
-      GInstrE c (G_Float f) -> InstrF c f
+      GInstrE c (G_Real f) -> InstrF c f
       GInstrE c (G_Int i)   -> InstrI c i
       x -> error $ "can't interpret instruction " ++ show x
 
@@ -93,8 +93,8 @@ warn msg = hPutStrLn stderr msg
 eps = 10**(-6) :: RealT
 dist (Pos x1 y1 z1) (Pos x2 y2 z2) = sum $ map (^2) $ zipWith (-) [x1,y1,z1] [x2,y2,z2]
 
-get_float (G_Float f) = f
-get_float x = error $ printf "can't get contents of %s as Float" (show x)
+get_float (G_Real f) = f
+get_float x = error $ printf "can't get contents of %s as Real" (show x)
 
 get_int (G_Int i) = i
 get_int x = error $ printf "can't get contents of %s as Int" (show x)
