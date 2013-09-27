@@ -11,11 +11,10 @@ import System.Environment
 
 prog1 = do
   frame [g 0, x 0, y 0, z 0]
-  x 10
-  frame [g 1, f 10000]
-  frame [g 1, x 10]
-  frame [g 1, y 10]
-  frame [g 1, z 10]
+  x 10000
+  f 10000
+  frame [g 1, y 10000]
+  frame [g 1, z 10000]
 
 test = do
   Just (_, gcode) <- gcodeGen prog1
@@ -24,11 +23,12 @@ test = do
   let iso_code = macroToIso7 gcode
   putStrLn "*** iso code:"
   print iso_code
-  gtrace  <- iso7ToMoves iso_code
-  putStrLn "*** gtrace:"
-  print gtrace
-  print "****parsed iso7"
-  evaluateIsoFile "examples/O192"
+  gtrace <- iso7ToMoves iso_code
+  mapM_ print gtrace
+  print $ iso7stats gtrace
+  -- gtrace  <- iso7ToMoves iso_code
+  -- print "****parsed iso7"
+  -- evaluateIsoFile "examples/O192"
 
 evaluateIsoFile :: FilePath -> IO ProgramStatistics
 evaluateIsoFile file = do
