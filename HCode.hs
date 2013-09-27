@@ -77,14 +77,24 @@ check_labels = do
   mapM_ (\lbl -> err $ printf "unknown label: %s" (show lbl)) (S.toList unknown_lbls)
 
 -- Generates a code and prints it on stdout
-gcodeGen gcode = do
-  let (_, st, (warns, errs, code)) = RWS.runRWS (gcode >> genAccumulated >> check_labels) 1 init_cs
+putHCode :: HCode () -> IO ()
+putHCode hcode = do
+  gen_res <- gcodeGen hcode
+  case gen_res of
+    Nothing -> return ()
+    Just (st, gcode) -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (mkLabel . printf "N%04d") [10 :: Int,20 ..])
+                               label_renamer n = fromMaybe (error "PANIC: label renamer can't find a label") $ lookup n label_list
+                           putGOps label_renamer gcode
+
+-- Generates a code and prints it on stdout
+gcodeGen :: HCode () -> IO (Maybe (GCompileState, GOperator))
+gcodeGen hcode = do
+  let (_, st, (warns, errs, gcode)) = RWS.runRWS (hcode >> genAccumulated >> check_labels) 1 init_cs
   when (not $ null warns) $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
-    True -> printf "Errors:\n%s\n" $ unlines errs
-    False -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (mkLabel . printf "N%04d") [10 :: Int,20 ..])
-                    label_renamer n = fromMaybe (error "PANIC: label renamer can't find a label") $ lookup n label_list
-                putGOps label_renamer code
+    True -> do printf "Errors:\n%s\n" $ unlines errs
+               return Nothing
+    False -> return $ Just (st, gcode)
 
 -- *****************
 --  EDSL primitives
