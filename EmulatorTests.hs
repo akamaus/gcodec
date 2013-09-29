@@ -44,4 +44,5 @@ evaluateIsoFile file = do
 main = do
   [file] <- getArgs
   stats <- evaluateIsoFile file
-  print stats
+  print $ file ++ " | " ++ show (ps_time stats)
+  
