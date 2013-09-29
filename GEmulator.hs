@@ -13,6 +13,7 @@ import Data.Maybe
 import qualified Data.Map as M
 import System.IO
 import Text.Printf
+import Debug.Trace
 
 -- Describes result of executing current frame
 data FrameResult = FR_Stop | FR_Move Move
@@ -37,6 +38,7 @@ newtype Tool = Tool Int deriving (Show, Eq, Ord)
 type GTrace = [Move]
 
 fastSpeed = 20000 :: RealT
+toolChangeTime = 10 / 60 :: RealT -- in minutes
 resetToLinear = True -- Should we switch to Linear interpolation after circle or not
 
 macroToIso7 :: GOperator -> Iso7Program
@@ -183,16 +185,23 @@ iso7stats' time fast_move_dist tool_dists [] = ProgramStatistics { ps_time = tim
                                                                , ps_tool_carve_stats = tool_dists
                                                                }
 iso7stats' time fast_move_dist tool_dists (cur_mov : moves) = case cur_mov of
-  M_FastLinear p1 p2 -> let dst = dist p1 p2 in iso7stats' (time + dt dst fastSpeed) (fast_move_dist + dst) tool_dists moves
-  M_Linear p1 p2 feed tool -> let dst = dist p1 p2 in iso7stats' (time + dt dst feed) fast_move_dist (upd_tools tool dst) moves
-  _ -> iso7stats' time fast_move_dist  tool_dists moves
-  where upd_tools tool dst = M.insertWith (+) tool dst tool_dists
+  M_FastLinear p1 p2 -> let dst = dist p1 p2 in upd_stats dst Nothing tool_dists
+  M_Linear p1 p2 _ _ -> let dst = dist p1 p2 in upd_work_stats dst
+  M_CircleRadius p1 p2 r _ _ _ -> let dst = ark_dst p1 p2 r in trace (show (p1,p2, r, dst)) $  upd_work_stats dst
+  M_CircleCenter p1 p2 c _ _ _ -> let r1 = dist p1 c
+                                      r2 = dist p2 c
+                                      dst = ark_dst p1 p2 r1
+                                  in if abs (r1 - r2) < eps then upd_work_stats dst
+                                     else error $ "uneven distance between center and start and end points: " ++ show (c, p1,p2)
+  M_ToolChange _ -> iso7stats' (time + toolChangeTime) fast_move_dist tool_dists moves
+  where upd_work_stats dst = upd_stats dst (Just $ m_feed cur_mov) (upd_tools (m_tool cur_mov) dst)
+        upd_stats dst mfeed tools' = case mfeed of
+          Just feed -> iso7stats' (time + dt dst feed) fast_move_dist tools' moves
+          Nothing -> iso7stats' (time + dt dst fastSpeed) (fast_move_dist + dst) tools' moves
+        upd_tools tool dst = M.insertWith (+) tool dst tool_dists
         dt dst feed = if dst < eps then 0 else dst / feed
 
 warn msg = hPutStrLn stderr msg
-
-eps = 10**(-6) :: RealT
-dist (Pos x1 y1 z1) (Pos x2 y2 z2) = sqrt $ sum $ map (^2) $ zipWith (-) [x1,y1,z1] [x2,y2,z2]
 
 get_float (G_Real f) = f
 get_float x = error $ printf "can't get contents of %s as Real" (show x)
