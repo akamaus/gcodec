@@ -18,7 +18,7 @@ data Iso7Program = Iso7Program {ipName :: String, ipCode :: [IFrame]} deriving S
 instrP = do
   c <- toUpper <$> letter
   val <- iso_double
-  return $ case elem c "GMT" of
+  return $ case elem c "GMNT" of
     True -> InstrI c (round val)
     _   -> InstrF c (realToFrac val)
 
