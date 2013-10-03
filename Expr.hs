@@ -51,6 +51,7 @@ data Expr t where
   Not :: Expr W.Bool -> Expr W.Bool
   Eq  :: Expr t -> Expr t -> Expr W.Bool
   Gt  :: Expr t -> Expr t -> Expr W.Bool
+  Ge  :: Expr t -> Expr t -> Expr W.Bool
   Read :: Cell t -> Expr t
 
 instance (Num t, ToExpr t) => Num (Expr t) where
@@ -86,7 +87,9 @@ instance W.Eq Expr a where
 
 instance W.Ord Expr a where
   (>) = Gt
+  (>=) = Ge
   a < b = (W.>) b a
+  a <= b = (W.>=) b a
 
 -- Various gcode functions
 fix :: (Fractional a, Integral b) => Expr a -> Expr b
@@ -114,6 +117,7 @@ eval (Div e1 e2) = G_Div (eval e1) (eval e2)
 
 eval (Eq e1 e2) = G_Eq (eval e1) (eval e2)
 eval (Gt e1 e2) = G_Gt (eval e1) (eval e2)
+eval (Ge e1 e2) = G_Ge (eval e1) (eval e2)
 eval (And e1 e2) = G_And (eval e1) (eval e2)
 eval (Or e1 e2) = G_Or (eval e1) (eval e2)
 eval (Not e1) = G_Not (eval e1)
