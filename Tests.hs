@@ -4,17 +4,17 @@ import GCode
 import HCode
 
 import AwePrelude
-import Prelude(Num(..), Fractional(..), Floating(..), Int, ($), id, putStrLn, (++))
+import Prelude(Num(..), Fractional(..), Floating(..), Int, ($), id, putStrLn, (++), show)
 import Control.Monad(mapM_)
 
 gcode_prog1 = GOps
-  [ GLabel "start"
+  [ GLabel (UserLabel "start")
   , GAssign (GCell 101) (G_Add (G_Read $ GCell 101) (G_Int 42))
   , GFrame [GInstrI 'G' 1, GInstrE 'X' (G_Read $ GCell 101), GInstrE 'Y' (G_Read $ GCell 100), GInstrE 'Z' (G_Int 20)]
   , GAssign (GCell 100) (G_Sub (G_Read $ GCell 100) (G_Int 5))
   , GIf (G_Gt (G_Read (GCell 100)) (G_Int 0))
-      (GGoto "start")
-  , GLabel "end"
+      (GGoto (UserLabel "start"))
+  , GLabel (UserLabel "end")
   , GFrame [GInstrI 'M' 100]
   , GOps [GFrame [GInstrI 'M' 30]] ""
   ] "a test program"
@@ -78,7 +78,7 @@ samples = [ (hcode_prog1, "Example1"),
 
 main = do
   putStrLn "***** GCode example: \n\n"
-  putGOps id gcode_prog1
+  putGOps show gcode_prog1
 
   mapM_ gen_sample samples
 

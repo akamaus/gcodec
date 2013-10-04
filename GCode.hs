@@ -29,9 +29,9 @@ instance Monoid GOperator where
   mappend op g@(GOps _ _) = GOps [GOps [op] "", g] ""
   mappend op1 op2 = GOps [op1, op2] ""
 
-type Label = S.ByteString
-mkLabel :: String -> Label
-mkLabel = strToBS
+data Label = UserLabel String | AutoLabel Int deriving (Show, Eq, Ord)
+mkULabel :: String -> Label
+mkULabel = UserLabel
 
 data GInstruction a = GInstrI Char Int -- integer compile type constant
                     | GInstrE Char GExpr deriving Show -- dynamic value
@@ -51,7 +51,7 @@ data GExpr = G_Unary OpName GExpr
            | G_And GExpr GExpr | G_Or GExpr GExpr | G_Not GExpr
            | G_Int Int | G_Float Float | G_Read GCell deriving (Eq, Ord, Show)
 
-type GopGen = Reader (Label -> Label)
+type GopGen = Reader (Label -> String)
 
 gopGen :: GOperator -> GopGen Builder
 gopGen (GOps ops comment) = do cs <- mapM gopGen ops
@@ -61,9 +61,9 @@ gopGen (GOps ops comment) = do cs <- mapM gopGen ops
                                return $ cmt <> mconcat cs
 gopGen (GAssign cell expr) = return $ gcellGen cell <> bs " = " <> gexprGen expr <> endl
 gopGen (GGoto label) = do trans <- ask
-                          return $ bs "GOTO " <> bs (trans label) <> endl
+                          return $ bs "GOTO " <> str (trans label) <> endl
 gopGen (GLabel label) = do trans <- ask
-                           return $ bs (trans label) <> bs " "
+                           return $ str (trans label) <> bs " "
 gopGen (GIf cond branch) = do code <- gopGen branch
                               return $ bs "IF " <> gexprGen cond <> bs " THEN " <> code <> endl
 gopGen (GWhile k cond body) = do code <- gopGen body
@@ -103,5 +103,5 @@ endl = fromChar '\n'
 strToBS :: String -> S.ByteString
 strToBS = S.pack . map (toEnum . fromEnum)
 -- IO Printer
-putGOps :: (Label -> Label) -> GOperator -> IO ()
+putGOps :: (Label -> String) -> GOperator -> IO ()
 putGOps label_trans g = LS.putStr $ toLazyByteString $ runReader (gopGen g) label_trans

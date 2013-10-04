@@ -82,7 +82,7 @@ gcodeGen gcode = do
   when (not $ null warns) $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
     True -> printf "Errors:\n%s\n" $ unlines errs
-    False -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (mkLabel . printf "N%04d") [10 :: Int,20 ..])
+    False -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (printf "N%04d") [10 :: Int,20 ..])
                     label_renamer n = fromMaybe (error "PANIC: label renamer can't find a label") $ lookup n label_list
                 putGOps label_renamer code
 
@@ -136,14 +136,14 @@ while cond body = do
 -- Generates a goto operator
 goto :: String -> HCode ()
 goto lbl_str = do
-  let lbl = mkLabel lbl_str
+  let lbl = mkULabel lbl_str
   L.modify gsc_ref_labels $ S.insert lbl
   gen $ GGoto lbl
 
 -- Creates a label at given point
 label :: String -> HCode ()
 label lbl_str = do
-  let lbl = mkLabel lbl_str
+  let lbl = mkULabel lbl_str
   labels <- L.gets gsc_gen_labels
   case elem lbl labels of
     False -> do L.puts gsc_gen_labels (lbl:labels)
