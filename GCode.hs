@@ -14,7 +14,7 @@ import qualified Data.ByteString.Lazy.Char8 as LS
 
 -- AST for program in ISO7
 data GOperator = GOps [GOperator] Comment | GLabel Label | GAssign GCell GExpr
-               | GIf GExpr GOperator | GWhile Int GExpr GOperator | GGoto Label
+               | GIf GExpr Label | GWhile Int GExpr GOperator | GGoto Label
                | GFrame [GInstruction ()] deriving Show
 
 type Comment = String
@@ -64,8 +64,8 @@ gopGen (GGoto label) = do trans <- ask
                           return $ bs "GOTO " <> str (trans label) <> endl
 gopGen (GLabel label) = do trans <- ask
                            return $ str (trans label) <> bs " "
-gopGen (GIf cond branch) = do code <- gopGen branch
-                              return $ bs "IF " <> gexprGen cond <> bs " THEN " <> code <> endl
+gopGen (GIf cond branch_lbl) = do goto_branch <- gopGen (GGoto branch_lbl)
+                                  return $ bs "IF " <> gexprGen cond <> bs " THEN " <> goto_branch <> endl
 gopGen (GWhile k cond body) = do code <- gopGen body
                                  return $ bs "WHILE " <> gexprGen cond <> bs " DO" <> fromShow k <> endl
                                    <> code

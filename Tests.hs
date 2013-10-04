@@ -13,7 +13,7 @@ gcode_prog1 = GOps
   , GFrame [GInstrI 'G' 1, GInstrE 'X' (G_Read $ GCell 101), GInstrE 'Y' (G_Read $ GCell 100), GInstrE 'Z' (G_Int 20)]
   , GAssign (GCell 100) (G_Sub (G_Read $ GCell 100) (G_Int 5))
   , GIf (G_Gt (G_Read (GCell 100)) (G_Int 0))
-      (GGoto (UserLabel "start"))
+      (UserLabel "start")
   , GLabel (UserLabel "end")
   , GFrame [GInstrI 'M' 100]
   , GOps [GFrame [GInstrI 'M' 30]] ""
@@ -72,8 +72,27 @@ hcode_poligon = do
     lengths instr #= lengths instr - 0.01 # "compensate instrument wearing"
     angle #= angle + step
 
+hcode_if_loops :: HCode ()
+hcode_if_loops = do
+  mx <- newVar 10 # "max x"
+  my <- newVar 20 # "max y"
+  cx <- newVar 1 # "cur x"
+  cy <- newVar 1 # "cur y"
+  label "x-loop"
+  gIf (cx <= mx) $ do
+    x cx
+    label "y-loop"
+    gIf (cy <= my) $ do
+      y cy
+      cy #= cy + 1
+      goto "y-loop"
+    cx #= cx + 1
+    goto "x-loop"
+  m 30
+
 samples = [ (hcode_prog1, "Example1"),
             (hcode_prog2, "Example2"),
+            (hcode_if_loops, "if_loops - test for compound operators in if branches"),
             (hcode_poligon, "Poligon drawer") ]
 
 main = do
