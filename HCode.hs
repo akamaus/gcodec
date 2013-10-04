@@ -30,6 +30,7 @@ data GCompileState = GCS {
   _gsc_vars :: VarMap, -- mapping from symbolic variables to numeric memory cells
   _gsc_ref_labels :: S.Set Label, -- labels referenced from generated code
   _gsc_gen_labels :: [Label],  -- already generated labels
+  _gsc_fresh_label :: Label,
   _gsc_acc :: Maybe GOperator  -- operator currently being assembled
   } deriving Show
 
@@ -52,7 +53,7 @@ genAccumulated = do
 
 
 -- Init compiler state
-init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [], _gsc_acc = Nothing }
+init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [], _gsc_fresh_label = AutoLabel 1, _gsc_acc = Nothing }
 
 -- Runs a computation storing a given projection of state
 saving l m = do
@@ -65,6 +66,22 @@ saving l m = do
 local_block :: HCode () -> HCode GOperator
 local_block block = do genAccumulated
                        liftM snd . RWS.censor (\(w,e,c) -> (w,e,RWS.mempty)) . RWS.listens (\(_,_,c) -> c) $ block >> genAccumulated
+
+freshLabel :: HCode Label
+freshLabel = L.modifyAndGet (gsc_fresh_label) $ \fl@(AutoLabel k) -> (fl, AutoLabel $ k + 1)
+
+-- registers label in list of used labels
+refLabel :: Label -> HCode ()
+refLabel lbl = L.modify gsc_ref_labels $ S.insert lbl
+
+-- generates a label, registers it in list of existing labels
+genLabel :: Label -> HCode ()
+genLabel lbl = do
+  labels <- L.gets gsc_gen_labels
+  case elem lbl labels of
+    False -> do L.puts gsc_gen_labels (lbl:labels)
+                gen $ GLabel lbl
+    True -> error $ printf "labels must be unique, but %s is already defined" (show lbl)
 
 -- Validated labels mentioned in generated code
 check_labels :: HCode ()
@@ -82,7 +99,7 @@ putHCode hcode = do
   gen_res <- gcodeGen hcode
   case gen_res of
     Nothing -> return ()
-    Just (st, gcode) -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (mkLabel . printf "N%04d") [10 :: Int,20 ..])
+    Just (st, gcode) -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (printf "N%04d") [10 :: Int,20 ..])
                                label_renamer n = fromMaybe (error "PANIC: label renamer can't find a label") $ lookup n label_list
                            putGOps label_renamer gcode
 
@@ -126,8 +143,16 @@ sysTable name = do let table e = GTable (mkTableName name) (eval e)
 gIf :: Expr W.Bool -> HCode () -> HCode ()
 gIf pred branch = do
   let gp = eval pred
+  rest_prog <- freshLabel
+  branch_lbl <- freshLabel
   code <- saving gsc_vars $ local_block branch
-  gen $ GIf gp code
+  gen $ GIf gp branch_lbl
+  gen $ GGoto rest_prog
+  genLabel $ branch_lbl
+  gen $ code
+  genLabel rest_prog
+  refLabel branch_lbl -- we used both labels so record this fact
+  refLabel rest_prog
 
 -- emits Assignment
 infixr 1 #=
@@ -146,19 +171,13 @@ while cond body = do
 -- Generates a goto operator
 goto :: String -> HCode ()
 goto lbl_str = do
-  let lbl = mkLabel lbl_str
-  L.modify gsc_ref_labels $ S.insert lbl
+  let lbl = mkULabel lbl_str
+  refLabel lbl
   gen $ GGoto lbl
 
 -- Creates a label at given point
 label :: String -> HCode ()
-label lbl_str = do
-  let lbl = mkLabel lbl_str
-  labels <- L.gets gsc_gen_labels
-  case elem lbl labels of
-    False -> do L.puts gsc_gen_labels (lbl:labels)
-                gen $ GLabel lbl
-    True -> error $ printf "labels must be unique, but %s is already defined" lbl_str
+label lbl_str = genLabel $ mkULabel lbl_str
 
 frame :: [GInstruction ()] -> HCode ()
 frame = gen . GFrame
