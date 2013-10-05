@@ -12,7 +12,7 @@ hcode_prog2 :: HCode ()
 hcode_prog2 = do
 -- блок переменных
   ofs_table <- sysTable "_OFS"
-  parallelHigh <- newVar 45.97 # "Visota paraleli"
+  parallelHigh <- newVar 45.97 # "Visota paralelii"
   comment "Razmeri detali"
   partHigh <- newVar 55.0 # "Visota zagotovoki"
   partLenth <- newVar 150.0 # "Dlina zagotovoki"
@@ -144,5 +144,7 @@ hcode_prog2 = do
   label "exit_Y40"
 
 main = do
-  putStrLn "\n***** Production: \n\n"
+  putStrLn "%"
+  putStrLn "O42"
   putHCode hcode_prog2
+  putStrLn "\n%"

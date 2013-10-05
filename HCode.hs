@@ -14,6 +14,7 @@ import Data.Label hiding(mkLabel)
 import Data.List
 import Data.Maybe
 import Data.Word
+import System.IO
 import Text.Printf
 import qualified Control.Monad.RWS as RWS
 import qualified Data.Label.PureM as L
@@ -107,9 +108,9 @@ putHCode hcode = do
 gcodeGen :: HCode () -> IO (Maybe (GCompileState, GOperator))
 gcodeGen hcode = do
   let (_, st, (warns, errs, gcode)) = RWS.runRWS (hcode >> genAccumulated >> check_labels) 1 init_cs
-  when (not $ null warns) $ printf "Warnings:\n%s\n" $ unlines warns
+  when (not $ null warns) $ hPutStrLn stderr $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
-    True -> do printf "Errors:\n%s\n" $ unlines errs
+    True -> do hPutStrLn stderr $ printf "Errors:\n%s\n" $ unlines errs
                return Nothing
     False -> return $ Just (st, gcode)
 
