@@ -192,7 +192,7 @@ iso7stats' time fast_move_dist tool_dists (cur_mov : moves) = case cur_mov of
                                       r2 = dist p2 c
                                       dst = ark_dst p1 p2 r1
                                   in if abs (r1 - r2) < eps then upd_work_stats dst
-                                     else error $ "uneven distance between center and start and end points: " ++ show (c, p1,p2)
+                                     else  upd_work_stats 0--error $ "uneven distance between center and start and end points: " ++ show (c, p1,p2)
   M_ToolChange _ -> iso7stats' (time + toolChangeTime) fast_move_dist tool_dists moves
   where upd_work_stats dst = upd_stats dst (Just $ m_feed cur_mov) (upd_tools (m_tool cur_mov) dst)
         upd_stats dst mfeed tools' = case mfeed of

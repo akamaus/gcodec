@@ -10,20 +10,20 @@ comment str = (return ()) # str
 
 hcode_prog2 :: HCode ()
 hcode_prog2 = do
+  
 -- блок переменных
   ofs_table <- sysTable "_OFS"
   parallelHigh <- newVar 45.97 # "Visota paralelii"
   comment "Razmeri detali"
-  partHigh <- newVar 55.0 # "Visota zagotovoki"
+  partHigh <- newVar 35.0 # "Visota zagotovoki"
   partLenth <- newVar 150.0 # "Dlina zagotovoki"
-  partThickness <- newVar 15.0 # "Tolshina zagotovoki"
+  partThickness <- newVar 50.0 # "Tolshina zagotovoki"
   numberOfparts  <- newVar (2 :: Int) # "Zagotovok v tiskah"
   comment "parametri obrabotki"
   h_oversize <- newVar 5.2 # "Pripusk po H"
   nameTool <- newVar (1 :: Int) # "instrument"
-  stepXY <- newVar 20.0 # "Shag po XY"
+  stepXY <- newVar 25.0 # "Shag po XY"
   stepZ <- newVar 1.0 # "Shag po Z"
-  psevdoFast <- newVar 10000   # "Uskorenaja podacha"
   feedCut <- newVar 2400 # "vrezaie"
   feedPlunge <- newVar 800 # "rezania"
   rpoinXY <- newVar 5.0 # "R-pointXY"
@@ -33,17 +33,12 @@ hcode_prog2 = do
   fastLinear <- newVar (1 :: Int) # "uskorenoe dvijenie: medlenno 1, bitsro 0"
   fullThickness <- newVarE $ partThickness * fi numberOfparts
   countZ <- newVar (0 :: Int)
-  gIf (stepZ > h_oversize / 2) $ do stepZ #= h_oversize / 2 {- учитываем детали с малым припуском  -}
+  gIf (h_oversize < 2) $ do stepZ #= h_oversize / 2 {- учитываем детали с малым припуском  -}
   cur_x <- sysVar 5001
   cur_y <- sysVar 5002
   cur_z <- sysVar 5003
   cur_d <- newVarE 25.0 # "radius T"
-  xp0 <- newVar (0)
-  yp0 <- newVarE (- cur_d)
-  xp1 <- newVarE (partLenth)
-  yp1 <- newVarE (fullThickness)
-
-  numStepsZ <- newVarE $ fix $ (partHigh + h_oversize) / stepZ  {- Целых шагов по Z Округлить до целых вниз #-}
+  numStepsZ <- newVarE $ fix $ (h_oversize / stepZ)  {- Целых шагов по Z Округлить до целых вниз #-}
   cycleZ_condition <- newVarE (fi numStepsZ / 2)  {- устанавливаем условие завершения цикла по Z для первой грани #-}
   fullHigh <- newVarE $ parallelHigh + partHigh + h_oversize  {- Вычисляем полную высоту от базы тисков #-}
 
@@ -53,58 +48,76 @@ hcode_prog2 = do
   frame [m 06, t nameTool] {- Меняем инструмент на указанный в настройках  -}
   frame [m 03, s 9500] {- Запускаем шпиндель по часовой с оборотами 9500 -}
   frame [m 08] {- включаем эмульсию -}
-  frame [g fastLinear, x $ -(rpoinXY + cur_d), y $ -(rpoinXY + cur_d), f psevdoFast]  {-Позиционируемся наверху -}
+  frame [g 00, x $ -(rpoinXY + cur_d), y $ -(rpoinXY + cur_d)]  {-Позиционируемся наверху -}
   frame [g 43, h nameTool, z $ fullHigh + spointZ ] {- активируем коррекцию по высоте заданого инструмент и опускаемся в S-point -}
   frame [g 01, z $ fullHigh, f feedCut] {-Опускаемся на уровень Z0 заготовки-}
 
 {- Цикл обработки по Z -}
   label "spiral_cycle"
-  while (cycleZ_condition > fi countZ) $ do
+  gIf (cycleZ_condition > fi countZ) $ do goto "spiral_cycle_cont" {-условие цикла соблюдено-}
+  gIf (cycleZ_condition < fi countZ) $ do goto "end_spiral_cycle" {-выходим из цикла-}
+  label "spiral_cycle_cont"
+  xp0 <- newVar (0)
+  yp0 <- newVarE (-stepXY )
+  xp1 <- newVarE (partLenth)
+  yp1 <- newVarE (fullThickness)
+  gIf (fi countZ >= stepZ) $ goto "last_spiral" {-проверяем не чистовой проход-}
+  frame [g 02, r (cur_d + rpoinXY), x 0, y 0, f feedPlunge] {- врезаемся в заготовку на радиус инструмента 8-}
+  frame [g 01, x xp1, f feedCut]
+  label "xy_cycle" {- Цикл обработки по XY -}
+  frame [g 01, x xp1 , f feedCut] {- переходим на подачу резанья по длине 1 -}
+  frame [g 2, x $ xp1 + stepXY , y yp0, r  $ stepXY ] {- поворачиваем на обратный ход 2 -}
+  gIf (cur_y < (yp0 - stepXY) ) $ do goto "exit_Y40"
+  frame [g 01, y $ -(yp1 - stepXY) ] {- движемся в  направлении толщины 3  -}
+  frame [g 2, y $ - yp1, x xp1, r stepXY ] {- поворачиваем направо 4 -}
+  gIf (cur_x < xp0 + stepXY) $ do goto "exit_X20"
+  frame [g 01, x $ xp0 + stepXY ] {- движемся в  направлении длины 5  -}
+  frame [g 2, x xp0, y $ - (yp1 - stepXY), r stepXY ] {- поворачиваем направо 6 -}
+  gIf (cur_y > yp0 - stepXY) $ do goto "exit_Y10"
+  frame [g 01, y $ yp0 - stepXY] {- движемся в  направлении толщины 7  -}
+  frame [g 02, r stepXY, x $ xp0 + stepXY, y yp0, f feedCut] {- поворот на следующий круг 8-}
+  xp0 #= xp0 + stepXY
+  yp0 #= yp0 - stepXY
+  xp1 #= xp1 - stepXY
+  yp1 #= yp1 - stepXY
+  gIf (cur_x > xp1) $ do goto "exit_X30"
+  goto "xy_cycle" {-зацикливание-}
 
-    gIf (fi countZ >= stepZ) $ goto "last_spiral" {-проверяем не чистовой пришла и пора чистового прохода-}
-    frame [g 02, r $ cur_d + rpoinXY, x 0, y 0, f feedPlunge] {- врезаемся в заготовку на радиус инструмента 8-}
-    frame [g 01, x xp0, f feedCut]
-    while (xp1 > cur_d) $ do {- Цикл обработки по XY -}
-
-      frame [g 01, x xp1 , f feedCut] {- переходим на подачу резанья по длине 1 -}
-      frame [g 2, x xp1, y $ - yp1, r stepXY ] {- поворачиваем на обратный ход 2 -}
-      gIf (cur_y < yp1 - stepXY ) $ do goto "exit_Y40"
-      frame [g 01, y $ yp1 - stepXY ] {- движемся в  направлении толщины 3  -}
-      frame [g 2, y $ - yp1, x xp1, r stepXY ] {- поворачиваем направо 4 -}
-      gIf (cur_x < xp0 + stepXY) $ do goto "exit_X20"
-      frame [g 01, x $ xp0 + stepXY ] {- движемся в  направлении длины 5  -}
-      frame [g 2, x xp0, y $ - yp1 - stepXY, r stepXY ] {- поворачиваем направо 6 -}
-      gIf (cur_y > yp0 - stepXY) $ do goto "exit_Y10"
-      frame [g 01, y $ yp0 - stepXY] {- движемся в  направлении толщины 7  -}
-      frame [g 02, r stepXY, x $ xp0 + stepXY, y yp0, f feedCut] {- поворот на следующий круг 8-}
-      xp0 #= xp0 + stepXY
-      yp0 #= yp0 - stepXY
-      xp1 #= xp1 - stepXY
-      yp1 #= yp1 - stepXY
-      gIf (cur_x > xp1) $ do goto "exit_X30"
-
-  label "exit_Y1"
-  frame [g 01, z $ cur_z + rpoinZ ]
-  frame [g 00, x $ - cur_d]
-  frame [g 00, y $ - (stepXY + rpoinXY)] -- FIXME висел плюс
-  goto "end_xy_cycle"
-
-  label "exit_X"
-  frame [g 01, z $ cur_z + rpoinZ  ]
-  frame [g 00, y $ cur_d + rpoinXY]
-  goto "end_xy_cycle"
-
+  comment "exit_Y10"
   label "exit_Y10"
-  frame [g 01, z $ cur_z + rpoinZ  ]
-  frame [g 00, x partLenth]
-  y $ cur_d + rpoinXY
+  frame [g 01, x $ xp1]
+  frame [g 00, z $ cur_z + rpoinZ ]
+  goto "end_xy_cycle"
 
+  comment "exit_X20"
+  label "exit_X20"
+  frame [g 01, y $  yp0 ]
+  frame [g 00, z $ cur_z + rpoinZ  ]
+  goto "end_xy_cycle"
+
+  comment "exit_X30"
+  label "exit_X30"
+  frame [g 01, y $ (partThickness * fi  numberOfparts)]
+  frame [g 00, z $ cur_z + rpoinZ  ]
+  goto "end_xy_cycle"
+
+  comment "exit_Y40"
+  label "exit_Y40"
+  frame [g 01, x partLenth]
+  frame [g 00, z $ cur_z + rpoinZ  ]
+
+  comment "end_xy_cycle"
   label "end_xy_cycle" {- окончание обрабоки единичной спирали  -}
+  frame [g 00, x $ -(rpoinXY + cur_d), y $ -(rpoinXY + cur_d)]
   gIf (cur_z <= fullHigh) $ goto "program_end" {-проверяем не закончена ли обработка-}
   z $ cur_z - rpoinZ - stepZ {- опускаемся обатно из r-point -}
-  countZ #= countZ + 1
-
-
+  countZ #= countZ + 1 {-увеличиваем счётчик Z-}
+  xp0 #= 0
+  yp0 #= -stepXY
+  xp1 #= partLenth
+  yp1 #= fullThickness
+  goto "spiral_cycle"
+  label "end_spiral_cycle"
   {- завершаем обработку 1й и 2й стороны-}
   z $ fullHigh + spointZ {- Поднимаемся в s-point  -}
   m 05 {- отключаем шпиндель -}
@@ -114,11 +127,10 @@ hcode_prog2 = do
   frame [g 04, p 1500]  {- ждём 1.5 сек -}
   m 09  {- отключаем воздух -}
   m 00
-  -- FIXME
-  --  frame [#3006=1] # "Perevernut zagotovki cherz Y" {- Останавливаемся и выводим сообщение -}
+  comment " [#3006=1]" # "Perevernut zagotovki cherz Y" {- Останавливаемся и выводим сообщение -} -- FIXME
 
   {- Обработка второй стороны -}
-  cycleZ_condition <- newVarE (fi numStepsZ)  {- устанавливаем условие завершения цикла по Z для второй грани #-}
+  cycleZ_condition #= fi numStepsZ  {- устанавливаем условие завершения цикла по Z для второй грани #-}
   {- Отпарвляемся на цикл спирали для второй стороны с новыми условиями для завершения целых шагов -}
   goto "spiral_cycle"
 
@@ -138,10 +150,6 @@ hcode_prog2 = do
   frame [g 04, p 1500]  {- ждём 1.5 сек -}
   frame [m 09]  {- отключаем воздух -}
 
--- МУСОРНЫЕ лейблы
-  label "exit_X20"
-  label "exit_X30"
-  label "exit_Y40"
 
 main = do
   putStrLn "%"

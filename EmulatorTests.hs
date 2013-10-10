@@ -38,11 +38,11 @@ evaluateIsoFile file = do
     Right iso -> do
       prog_trace <- iso7ToMoves iso
       return $ iso7stats prog_trace
-    Left err -> do putStrLn $ "Error parsing: " ++ show err
+    Left err -> do putStrLn $ file ++ "|" ++ "Error parsing: " ++ show err
                    fail err
 
 main = do
   [file] <- getArgs
   stats <- evaluateIsoFile file
-  print $ file ++ " | " ++ show (ps_time stats)
+  print $ file ++ " | " ++ show (ps_time stats) ++ " | " ++ show (ps_tool_carve_stats stats)
   
