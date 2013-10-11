@@ -22,9 +22,8 @@ import qualified Data.Set as S
 type CompileResults = ([Warning],[Error],GOperator)
 type Warning = String
 type Error = String
-type WhileDepth = Int
 
-type HCode = RWS.RWS WhileDepth CompileResults GCompileState
+type HCode = RWS.RWS () CompileResults GCompileState
 
 data GCompileState = GCS {
   _gsc_vars :: VarMap, -- mapping from symbolic variables to numeric memory cells
@@ -95,7 +94,7 @@ check_labels = do
 
 -- Generates a code and prints it on stdout
 gcodeGen gcode = do
-  let (_, st, (warns, errs, code)) = RWS.runRWS (gcode >> genAccumulated >> check_labels) 1 init_cs
+  let (_, st, (warns, errs, code)) = RWS.runRWS (gcode >> genAccumulated >> check_labels) () init_cs
   when (not $ null warns) $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
     True -> printf "Errors:\n%s\n" $ unlines errs
@@ -151,13 +150,20 @@ infixr 1 #=
 (#=) (Read c) e = gen $ GAssign (unCell c) (eval e)
 (#=) _ e = error "Left side of an assignment must be a variable"
 
+-- Generates a while loop, implemented using IF and GOTO, cause WHILE badly interacts with goto
 while :: Expr W.Bool -> HCode () -> HCode ()
-while cond body = do
-  depth <- RWS.ask
-  when (depth > 3) $ warn $ printf "Generating while of depth %d" depth
-  let expr = eval cond
-  code <- RWS.local (+1) $ saving gsc_vars $ local_block body
-  gen $ GWhile depth expr code
+while pred body = do
+  let gp = eval (Not pred)
+  rest_prog_lbl <- freshLabel
+  while_lbl <- freshLabel
+  genLabel while_lbl
+  gen $ GIf gp rest_prog_lbl
+  code <- saving gsc_vars $ local_block body
+  gen code
+  gen $ GGoto while_lbl
+  genLabel rest_prog_lbl
+  refLabel while_lbl
+  refLabel rest_prog_lbl
 
 -- Generates a goto operator
 goto :: String -> HCode ()
