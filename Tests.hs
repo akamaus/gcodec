@@ -90,9 +90,19 @@ hcode_if_loops = do
     goto "x-loop"
   m 30
 
+hcode_for = do
+  mx <- newVar 10
+  for 1 (<= mx) (+ 0.5) $ \i -> do
+    x i
+    y 10
+    y 0
+  tst <- newVar (42 :: Int)
+  m 30
+
 samples = [ (hcode_prog1, "Example1"),
             (hcode_prog2, "Example2"),
             (hcode_if_loops, "if_loops - test for compound operators in if branches"),
+            (hcode_for, "for loop"),
             (hcode_poligon, "Poligon drawer") ]
 
 main = do

@@ -165,6 +165,15 @@ while pred body = do
   refLabel while_lbl
   refLabel rest_prog_lbl
 
+for :: Expr a -> (Expr a -> Expr W.Bool) -> (Expr a -> Expr a) -> (Expr a -> HCode ()) -> HCode ()
+for init pred next body = do
+  code <- saving gsc_vars $ local_block $ do
+    k <- newVarE init
+    while (pred k) $ do
+      body k
+      k #= next k
+  gen code
+
 -- Generates a goto operator
 goto :: String -> HCode ()
 goto lbl_str = do
