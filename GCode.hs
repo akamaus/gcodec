@@ -51,7 +51,10 @@ data GExpr = G_Unary OpName GExpr
            | G_And GExpr GExpr | G_Or GExpr GExpr | G_Not GExpr
            | G_Int Int | G_Float Float | G_Read GCell deriving (Eq, Ord, Show)
 
-type GopGen = Reader (Label -> String)
+-- used for printing Labels on frames and in gotos
+data LabelPrinter = LabelPrinter { lp_frame :: Label -> String, lp_ref :: Label -> String }
+
+type GopGen = Reader LabelPrinter
 
 gopGen :: GOperator -> GopGen Builder
 gopGen (GOps ops comment) = do cs <- mapM gopGen ops
@@ -60,9 +63,9 @@ gopGen (GOps ops comment) = do cs <- mapM gopGen ops
                                      s -> bs "( " <> str s <> bs " )" <> endl
                                return $ cmt <> mconcat cs
 gopGen (GAssign cell expr) = return $ gcellGen cell <> bs " = " <> gexprGen expr <> endl
-gopGen (GGoto label) = do trans <- ask
-                          return $ bs "GOTO " <> str (trans label) <> endl
-gopGen (GLabel label) = do trans <- ask
+gopGen (GGoto label) = do trans <- asks lp_ref
+                          return $ bs " GOTO " <> str (trans label) <> endl
+gopGen (GLabel label) = do trans <- asks lp_frame
                            return $ str (trans label) <> bs " "
 gopGen (GIf cond branch_lbl) = do goto_branch <- gopGen (GGoto branch_lbl)
                                   return $ bs "IF " <> gexprGen cond <> bs " THEN " <> goto_branch <> endl
@@ -103,5 +106,5 @@ endl = fromChar '\n'
 strToBS :: String -> S.ByteString
 strToBS = S.pack . map (toEnum . fromEnum)
 -- IO Printer
-putGOps :: (Label -> String) -> GOperator -> IO ()
-putGOps label_trans g = LS.putStr $ toLazyByteString $ runReader (gopGen g) label_trans
+putGOps :: LabelPrinter -> GOperator -> IO ()
+putGOps printer g = LS.putStr $ toLazyByteString $ runReader (gopGen g) printer

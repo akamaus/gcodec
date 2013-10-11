@@ -97,7 +97,7 @@ samples = [ (hcode_prog1, "Example1"),
 
 main = do
   putStrLn "***** GCode example: \n\n"
-  putGOps show gcode_prog1
+  putGOps (LabelPrinter show show) gcode_prog1
 
   mapM_ gen_sample samples
 

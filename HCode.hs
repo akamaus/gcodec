@@ -99,9 +99,10 @@ gcodeGen gcode = do
   when (not $ null warns) $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
     True -> printf "Errors:\n%s\n" $ unlines errs
-    False -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (printf "N%04d") [10 :: Int,20 ..])
+    False -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (printf "%04d") [10 :: Int, 20 ..])
                     label_renamer n = fromMaybe (error "PANIC: label renamer can't find a label") $ lookup n label_list
-                putGOps label_renamer code
+                    label_printer = LabelPrinter { lp_frame = ('N':) . label_renamer, lp_ref = label_renamer}
+                putGOps label_printer code
 
 -- *****************
 --  EDSL primitives
