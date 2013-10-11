@@ -64,7 +64,7 @@ gopGen (GOps ops comment) = do cs <- mapM gopGen ops
                                return $ cmt <> mconcat cs
 gopGen (GAssign cell expr) = return $ gcellGen cell <> bs " = " <> gexprGen expr <> endl
 gopGen (GGoto label) = do trans <- asks lp_ref
-                          return $ bs " GOTO " <> str (trans label) <> endl
+                          return $ bs "GOTO " <> str (trans label) <> endl
 gopGen (GLabel label) = do trans <- asks lp_frame
                            return $ str (trans label) <> bs " "
 gopGen (GIf cond branch_lbl) = do goto_branch <- gopGen (GGoto branch_lbl)
