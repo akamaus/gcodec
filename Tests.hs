@@ -4,17 +4,17 @@ import GCode
 import HCode
 
 import AwePrelude
-import Prelude(Num(..), Fractional(..), Floating(..), Int, ($), id, putStrLn, (++))
+import Prelude(Num(..), Fractional(..), Floating(..), Int, ($), id, putStrLn, (++), show)
 import Control.Monad(mapM_)
 
 gcode_prog1 = GOps
-  [ GLabel "start"
+  [ GLabel (UserLabel "start")
   , GAssign (GCell 101) (G_Add (G_Read $ GCell 101) (G_Int 42))
   , GFrame [GInstrI 'G' 1, GInstrE 'X' (G_Read $ GCell 101), GInstrE 'Y' (G_Read $ GCell 100), GInstrE 'Z' (G_Int 20)]
   , GAssign (GCell 100) (G_Sub (G_Read $ GCell 100) (G_Int 5))
   , GIf (G_Gt (G_Read (GCell 100)) (G_Int 0))
-      (GGoto "start")
-  , GLabel "end"
+      (UserLabel "start")
+  , GLabel (UserLabel "end")
   , GFrame [GInstrI 'M' 100]
   , GOps [GFrame [GInstrI 'M' 30]] ""
   ] "a test program"
@@ -72,13 +72,32 @@ hcode_poligon = do
     lengths instr #= lengths instr - 0.01 # "compensate instrument wearing"
     angle #= angle + step
 
+hcode_if_loops :: HCode ()
+hcode_if_loops = do
+  mx <- newVar 10 # "max x"
+  my <- newVar 20 # "max y"
+  cx <- newVar 1 # "cur x"
+  cy <- newVar 1 # "cur y"
+  label "x-loop"
+  gIf (cx <= mx) $ do
+    x cx
+    label "y-loop"
+    gIf (cy <= my) $ do
+      y cy
+      cy #= cy + 1
+      goto "y-loop"
+    cx #= cx + 1
+    goto "x-loop"
+  m 30
+
 samples = [ (hcode_prog1, "Example1"),
             (hcode_prog2, "Example2"),
+            (hcode_if_loops, "if_loops - test for compound operators in if branches"),
             (hcode_poligon, "Poligon drawer") ]
 
 main = do
   putStrLn "***** GCode example: \n\n"
-  putGOps id gcode_prog1
+  putGOps show gcode_prog1
 
   mapM_ gen_sample samples
 
