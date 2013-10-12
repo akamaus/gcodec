@@ -115,52 +115,28 @@ xy_cycle stepXY partLenth fullThickness = do
   xp1 <- newVarE (partLenth)
   yp1 <- newVarE (fullThickness)
 
-  label "xy_cycle" --Цикл обработки по XY (итерационный)
-  frame [g 01, x xp1] {- переходим на подачу резанья по длине 1 -}
-  frame [g 2, x $ xp1 + stepXY , y yp0, r  $ stepXY ] {- поворачиваем на обратный ход 2 -}
-  gIf (cur_y < -(yp1 - stepXY) ) $ do goto "exit_Y40"
-  frame [g 01, y $ -(yp1 - stepXY) ] {- движемся в  направлении толщины 3  -}
-  frame [g 2, y $ - yp1, x xp1, r stepXY ] {- поворачиваем направо 4 -}
-  gIf (cur_x < xp0 + stepXY) $ do goto "exit_X20"
-  frame [g 01, x $ xp0 + stepXY ] {- движемся в  направлении длины 5  -}
-  frame [g 2, x xp0, y $ - (yp1 - stepXY), r stepXY ] {- поворачиваем направо 6 -}
-  gIf (cur_y > yp0 - stepXY) $ do goto "exit_Y10"
-  frame [g 01, y $ yp0 - stepXY] {- движемся в  направлении толщины 7  -}
-  frame [g 02, r stepXY, x $ xp0 + stepXY, y yp0] {- поворот на следующий круг 8-}
-  xp0 #= xp0 + stepXY
-  yp0 #= yp0 - stepXY
-  xp1 #= xp1 - stepXY
-  yp1 #= yp1 - stepXY
-  gIf (cur_x > xp1) $ do goto "exit_X30"
-  goto "xy_cycle" {-зацикливание на плоскости-}
+  while true $ do --Цикл обработки по XY (итерационный)
+    frame [g 01, x xp1] {- переходим на подачу резанья по длине 1 -}
+    frame [g 2, x $ xp1 + stepXY , y yp0, r  $ stepXY ] {- поворачиваем на обратный ход 2 -}
+    gIf (cur_y < -(yp1 - stepXY) ) $ do frame [g 01, x xp0]
+                                        break
+    frame [g 01, y $ -(yp1 - stepXY) ] {- движемся в  направлении толщины 3  -}
+    frame [g 2, y $ - yp1, x xp1, r stepXY ] {- поворачиваем направо 4 -}
+    gIf (cur_x < xp0 + stepXY) $ do frame [g 01, y $  yp0 ]
+                                    break
+    frame [g 01, x $ xp0 + stepXY ] {- движемся в  направлении длины 5  -}
+    frame [g 2, x xp0, y $ - (yp1 - stepXY), r stepXY ] {- поворачиваем направо 6 -}
+    gIf (cur_y > yp0 - stepXY) $ do frame [g 01, x $ xp1]
+                                    break
+    frame [g 01, y $ yp0 - stepXY] {- движемся в  направлении толщины 7  -}
+    frame [g 02, r stepXY, x $ xp0 + stepXY, y yp0] {- поворот на следующий круг 8-}
+    xp0 #= xp0 + stepXY
+    yp0 #= yp0 - stepXY
+    xp1 #= xp1 - stepXY
+    yp1 #= yp1 - stepXY
+    gIf (cur_x > xp1) $ do frame [g 01, y $ - yp1]
+                           break
 
-  comment "exit_Y10"
-  label "exit_Y10"
-  frame [g 01, x $ xp1]
-  goto "end_xy_cycle"
-
-  comment "exit_X20"
-  label "exit_X20"
-  frame [g 01, y $  yp0 ]
-  goto "end_xy_cycle"
-
-  comment "exit_X30"
-  label "exit_X30"
-  frame [g 01, y $ - yp1]
-  goto "end_xy_cycle"
-
-  comment "exit_Y40"
-  label "exit_Y40"
-  frame [g 01, x xp0]
-
-  comment "end_xy_cycle"
-  label "end_xy_cycle" {- окончание обрабоки единичной спирали  -}
-
-
-
-
-
-  
 main = do
   putStrLn "%"
   putStrLn "O4001 (Gabarit AL  spiral 2 storoni)"
