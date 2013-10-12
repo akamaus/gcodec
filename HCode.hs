@@ -6,6 +6,7 @@ import Expr
 import GCode
 import VarMap
 
+import Prelude hiding(break)
 import qualified AwePrelude as W
 
 import Control.Applicative
@@ -23,7 +24,7 @@ type CompileResults = ([Warning],[Error],GOperator)
 type Warning = String
 type Error = String
 
-type HCode = RWS.RWS () CompileResults GCompileState
+type HCode = RWS.RWS [Label] CompileResults GCompileState
 
 data GCompileState = GCS {
   _gsc_vars :: VarMap, -- mapping from symbolic variables to numeric memory cells
@@ -94,7 +95,7 @@ check_labels = do
 
 -- Generates a code and prints it on stdout
 gcodeGen gcode = do
-  let (_, st, (warns, errs, code)) = RWS.runRWS (gcode >> genAccumulated >> check_labels) () init_cs
+  let (_, st, (warns, errs, code)) = RWS.runRWS (gcode >> genAccumulated >> check_labels) [] init_cs
   when (not $ null warns) $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
     True -> printf "Errors:\n%s\n" $ unlines errs
@@ -158,13 +159,14 @@ while pred body = do
   while_lbl <- freshLabel
   genLabel while_lbl
   gen $ GIf gp rest_prog_lbl
-  code <- saving gsc_vars $ local_block body
+  code <- RWS.local (rest_prog_lbl :) $ saving gsc_vars $ local_block body
   gen code
   gen $ GGoto while_lbl
   genLabel rest_prog_lbl
   refLabel while_lbl
   refLabel rest_prog_lbl
 
+-- a for loop, like in C
 for :: Expr a -> (Expr a -> Expr W.Bool) -> (Expr a -> Expr a) -> (Expr a -> HCode ()) -> HCode ()
 for init pred next body = do
   code <- saving gsc_vars $ local_block $ do
@@ -173,6 +175,18 @@ for init pred next body = do
       body k
       k #= next k
   gen code
+
+-- Breaks out of innermost loop
+break :: HCode ()
+break = break_n 1
+-- Escape n-levels of loops
+break_n :: Int -> HCode ()
+break_n n | n < 1 = error "break_n should be called with a positive number, which specifies how many level of blocks to float up"
+          | True = do
+            escape_labels <- RWS.ask
+            case drop (n-1) escape_labels of
+              [] -> error $ "can't break " ++ show n ++ if n>1 then " levels" else " level"
+              (lbl:_) -> gen $ GGoto lbl
 
 -- Generates a goto operator
 goto :: String -> HCode ()

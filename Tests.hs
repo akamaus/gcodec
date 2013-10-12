@@ -94,6 +94,7 @@ hcode_for = do
   mx <- newVar 10
   for 1 (<= mx) (+ 0.5) $ \i -> do
     x i
+    gIf (i == 5) $ break
     y 10
     y 0
   tst <- newVar (42 :: Int)
