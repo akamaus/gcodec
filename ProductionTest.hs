@@ -32,14 +32,15 @@ hcode_prog2 = do
   comment "System variables"
   fastLinear <- newVar (1 :: Int) # "uskorenoe dvijenie: medlenno 1, bitsro 0"
   fullThickness <- newVarE $ partThickness * fi numberOfparts
-  countZ <- newVar (0 :: Int)
+  countZ <- newVar (0 :: Int) {-счётчик текущих итераций по Z-}
+  cycle_type <-newVar (0::Int) {-тип текущего цилка по Z-}
   gIf (h_oversize < 2) $ do stepZ #= h_oversize / 2 {- учитываем детали с малым припуском  -}
   cur_x <- sysVar 5001
   cur_y <- sysVar 5002
   cur_z <- sysVar 5003
   cur_d <- newVarE 25.0 # "radius T"
-  numStepsZ <- newVarE $ fix $ (h_oversize / stepZ)  {- Целых шагов по Z Округлить до целых вниз #-}
-  cycleZ_condition <- newVarE (fi numStepsZ / 2)  {- устанавливаем условие завершения цикла по Z для первой грани #-}
+  numStepsZ <- newVarE (fix (h_oversize / stepZ) :: Expr Int)  {- Целых шагов по Z Округлить до целых вниз #-}
+  cycleZ_condition <- newVarE $ numStepsZ - fix (fi numStepsZ / 2)  {- устанавливаем условие завершения цикла по Z для первой грани #-}
   fullHigh <- newVarE $ parallelHigh + partHigh + h_oversize  {- Вычисляем полную высоту от базы тисков #-}
 
 --пошла сама программа
@@ -54,10 +55,10 @@ hcode_prog2 = do
 
 {- Цикл обработки по Z -}
   label "spiral_cycle"
-  gIf (cycleZ_condition > fi countZ) $ do goto "spiral_cycle_cont" {-условие цикла соблюдено-}
-  gIf (cycleZ_condition < fi countZ) $ do goto "end_spiral_cycle" {-выходим из цикла-}
+  gIf (cycleZ_condition > countZ) $ do goto "spiral_cycle_cont" {-условие цикла соблюдено-}
+  gIf (cycleZ_condition < countZ) $ do goto "end_spiral_cycle" {-выходим из цикла-}
   label "spiral_cycle_cont"
-  xp0 <- newVar (0)
+  xp0 <- newVar ( 0)
   yp0 <- newVarE (-stepXY )
   xp1 <- newVarE (partLenth)
   yp1 <- newVarE (fullThickness)
@@ -67,7 +68,7 @@ hcode_prog2 = do
   label "xy_cycle" {- Цикл обработки по XY -}
   frame [g 01, x xp1 , f feedCut] {- переходим на подачу резанья по длине 1 -}
   frame [g 2, x $ xp1 + stepXY , y yp0, r  $ stepXY ] {- поворачиваем на обратный ход 2 -}
-  gIf (cur_y < (yp0 - stepXY) ) $ do goto "exit_Y40"
+  gIf (cur_y < -(yp1 - stepXY) ) $ do goto "exit_Y40"
   frame [g 01, y $ -(yp1 - stepXY) ] {- движемся в  направлении толщины 3  -}
   frame [g 2, y $ - yp1, x xp1, r stepXY ] {- поворачиваем направо 4 -}
   gIf (cur_x < xp0 + stepXY) $ do goto "exit_X20"
@@ -81,7 +82,7 @@ hcode_prog2 = do
   xp1 #= xp1 - stepXY
   yp1 #= yp1 - stepXY
   gIf (cur_x > xp1) $ do goto "exit_X30"
-  goto "xy_cycle" {-зацикливание-}
+  goto "xy_cycle" {-зацикливание на плоскости-}
 
   comment "exit_Y10"
   label "exit_Y10"
@@ -97,13 +98,13 @@ hcode_prog2 = do
 
   comment "exit_X30"
   label "exit_X30"
-  frame [g 01, y $ (partThickness * fi  numberOfparts)]
+  frame [g 01, y $ - yp1]
   frame [g 00, z $ cur_z + rpoinZ  ]
   goto "end_xy_cycle"
 
   comment "exit_Y40"
   label "exit_Y40"
-  frame [g 01, x partLenth]
+  frame [g 01, x xp0]
   frame [g 00, z $ cur_z + rpoinZ  ]
 
   comment "end_xy_cycle"
@@ -118,6 +119,7 @@ hcode_prog2 = do
   yp1 #= fullThickness
   goto "spiral_cycle"
   label "end_spiral_cycle"
+  gIf (cycle_type ==  2) $ do goto "program_end" {-смотрим что пришли с чиствого прохода и на выход-}
   {- завершаем обработку 1й и 2й стороны-}
   z $ fullHigh + spointZ {- Поднимаемся в s-point  -}
   m 05 {- отключаем шпиндель -}
@@ -126,18 +128,19 @@ hcode_prog2 = do
   m 07  {- дуем воздухом -}
   frame [g 04, p 1500]  {- ждём 1.5 сек -}
   m 09  {- отключаем воздух -}
-  m 00
-  comment " [#3006=1]" # "Perevernut zagotovki cherz Y" {- Останавливаемся и выводим сообщение -} -- FIXME
+  comment " [#3006=1] (Perevernut zagotovki cherz Y)" {- Останавливаемся и выводим сообщение -} -- FIXME
 
   {- Обработка второй стороны -}
-  cycleZ_condition #= fi numStepsZ  {- устанавливаем условие завершения цикла по Z для второй грани #-}
+  cycleZ_condition #= fix (fi numStepsZ/2)  {- устанавливаем условие завершения цикла по Z для второй грани -}
+  cycle_type #= 1 {-назначаем обработку второй стороны-}
   {- Отпарвляемся на цикл спирали для второй стороны с новыми условиями для завершения целых шагов -}
-  goto "spiral_cycle"
+  goto "spiral_cycle" {-отправляемся на цикл спирали-}
 
   {-последний чистовой проход устанавливающий размер-}
   label "last_spiral"
   frame [z fullHigh] {-позиционируемся по Z-}
-  countZ #= countZ - 1
+  countZ #= 1
+  cycle_type #= 2 {-назначаем последний проход-}
   goto "spiral_cycle" {-отправляемся на цикл спирали-}
 
   {- Завершение программы -}
@@ -149,10 +152,10 @@ hcode_prog2 = do
   frame [m 07]  {- дуем воздухом -}
   frame [g 04, p 1500]  {- ждём 1.5 сек -}
   frame [m 09]  {- отключаем воздух -}
-
-
+  
 main = do
   putStrLn "%"
-  putStrLn "O42"
+  putStrLn "O4001 (Gabarit AL  spiral 2 storoni)"
   putHCode hcode_prog2
+  putStrLn "M30"
   putStrLn "\n%"
