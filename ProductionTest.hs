@@ -30,83 +30,62 @@ hcode_prog2 = do
   spointZ <- newVar 15.0 # "S-pointZ"
   rpoinZ <- newVar 2.0 #"R-pointZ"
   comment "System variables"
-  cur_z <- sysVar 5003
-
-  fastLinear <- newVar (1 :: Int) # "uskorenoe dvijenie: medlenno 1, bitsro 0"
   fullThickness <- newVarE $ partThickness * fi numberOfparts
-  countZ <- newVar (0 :: Int) {-счётчик текущих итераций по Z-}
   cycle_type <-newVar (0::Int) {-тип текущего цилка по Z-}
   gIf (h_oversize < 2) $ do stepZ #= h_oversize / 2 {- учитываем детали с малым припуском  -}
   cur_d <- newVarE 25.0 # "radius T"
   numStepsZ <- newVarE (fix (h_oversize / stepZ) :: Expr Int)  {- Целых шагов по Z Округлить до целых вниз #-}
-  cycleZ_condition <- newVarE $ numStepsZ - fix (fi numStepsZ / 2)  {- устанавливаем условие завершения цикла по Z для первой грани #-}
+  cycleZ_main_condition <- newVarE $ numStepsZ - fix (fi numStepsZ / 2)  {- устанавливаем условие завершения цикла по Z для первой грани #-}
   fullHigh <- newVarE $ parallelHigh + partHigh + h_oversize  {- Вычисляем полную высоту от базы тисков #-}
+--только SLD функции
+  let xy_cycle = spiral_XY stepXY partLenth fullThickness
 
 --пошла сама программа
-  frame [g 91, g 28, z 0]  {- поднимаемся в 0 по Z -}
-  frame [g 58, g 90, g 21, g 17, g 23, g 40, g 49, g 80]
-  frame [m 06, t nameTool] {- Меняем инструмент на указанный в настройках  -}
-  frame [m 03, s 9500] {- Запускаем шпиндель по часовой с оборотами 9500 -}
-  frame [m 08] {- включаем эмульсию -}
-  frame [g 00, x $ -(rpoinXY + cur_d), y $ -(rpoinXY + cur_d)]  {-Позиционируемся наверху -}
-  frame [g 43, h nameTool, z $ fullHigh + spointZ ] {- активируем коррекцию по высоте заданого инструмент и опускаемся в S-point -}
-  frame [g 01, z $ fullHigh, f feedCut] {-Опускаемся на уровень Z0 заготовки-}
+  frame [g 91, g 28, z 0] -- поднимаемся в референтную позицию по Z
+  frame [g 58, g 90, g 21, g 17, g 23, g 40, g 49, g 80] --строка безопасности
+  frame [m 06, t nameTool] -- Меняем инструмент на указанный в настройках
+--ставим инструмент, строка безопасности, предварительное позиционирование XY, опускаемся на 150мм от заговто 
+  prepare_preposition_block nameTool rpoinXY cur_d fullHigh rpoinZ
+-- выполняем цикл обработки Z(первая округлённая вниз половина целых шагов)
+  z_one_iteration_cycle rpoinXY cur_d fullHigh rpoinZ stepZ cycleZ_main_condition feedPlunge
+--завершаем опрецию для перехода ко второй стороне
+  operation_end fullHigh spointZ
+  comment " [#3006=1] (Perevernut zagotovki cherz Y)" ---Останавливаемся и выводим сообщение !FIXME!
 
---Цикл обработки по Z (главный цикл)
-  label "spiral_cycle"
-  gIf (cycleZ_condition > countZ) $ do goto "spiral_cycle_cont" {-условие цикла соблюдено-}
-  gIf (cycleZ_condition < countZ) $ do goto "end_spiral_cycle" {-выходим из цикла-}
-  label "spiral_cycle_cont"
+--Обработка второй стороны
+  --устанавливаем новую полную высоту после обработки первой стороны
+  fullHigh #= parallelHigh + (partHigh - fi (cycleZ_main_condition) * stepZ)
+  -- устанавливаем количество целых шагов цикла Z для второй стороны
+  cycleZ_main_condition #= numStepsZ - fix (fi numStepsZ/2)
+  prepare_preposition_block nameTool rpoinXY cur_d fullHigh rpoinZ --подготавлвиаемся к резанию
+  -- выполняем цикл обработки Z - оставшая часть целых шагов
+  z_one_iteration_cycle rpoinXY cur_d fullHigh rpoinZ stepZ cycleZ_main_condition feedPlunge
+  -- выполняем чистовой проход
+  z $ parallelHigh + partHigh --позиционируемся на финальную выстоу
+  frame [g 02, r (cur_d + rpoinXY), x 0, y 0, f feedPlunge] -- врезаемся в заготовку на радиус инструмента
+  xy_cycle -- вызываем спираль
+  operation_end fullHigh spointZ --завершаем операцию
+  -- выходим из программы
+  m 30
 
-  -- [XY variables]
 
-  gIf (fi countZ >= stepZ) $ goto "last_spiral" {-проверяем не чистовой проход-}
-  frame [g 02, r (cur_d + rpoinXY), x 0, y 0, f feedPlunge] {- врезаемся в заготовку на радиус инструмента 8-}
+-- объявление функций
+--функция основного цикла по Z, включает в себя позиционирование и врезание
+z_one_iteration_cycle xy_cycle rpoinXY cur_d rpoinZ stepZ cycleZ_main_condition feedPlunge  = do
+  cur_z <- sysVar 5003 --инициализируем системную переменную Z на конец предыдущего блока
+  countZ <- newVar (0 :: Int) {-счётчик текущих итераций по Z-}
 
-  xy_cycle stepXY partLenth fullThickness -- вызываем саму спираль XY
-  
-  z $ cur_z + rpoinZ --выходим в R-point после завершения спирали
-  frame [g 00, x $ -(rpoinXY + cur_d), y $ -(rpoinXY + cur_d)]
-  gIf (cur_z <= fullHigh) $ goto "program_end" {-проверяем не закончена ли обработка-}
-  z $ cur_z - rpoinZ - stepZ {- опускаемся обатно из r-point -}
-  countZ #= countZ + 1 {-увеличиваем счётчик Z-}
-  goto "spiral_cycle"
-  label "end_spiral_cycle"
-  gIf (cycle_type ==  2) $ do goto "program_end" {-смотрим что пришли с чиствого прохода и на выход-}
-  {- завершаем обработку 1й и 2й стороны-}
-  z $ fullHigh + spointZ {- Поднимаемся в s-point  -}
-  m 05 {- отключаем шпиндель -}
-  m 09 {- отключаем эмульсию -}
-  frame [g 00, x 50.0, y 240.0, z 250.0]
-  m 07  {- дуем воздухом -}
-  frame [g 04, p 1500]  {- ждём 1.5 сек -}
-  m 09  {- отключаем воздух -}
-  comment " [#3006=1] (Perevernut zagotovki cherz Y)" {- Останавливаемся и выводим сообщение -} -- FIXME
+  while cycleZ_main_condition > countZ $ do --Цикл обработки по Z
+    z $ cur_z - rpoinZ - stepZ --опускаемся в плоскость резания из r-point
+    countZ #= countZ + 1 --увеличиваем счётчик Z
+    frame [g 02, r (cur_d + rpoinXY), x 0, y 0, f feedPlunge] -- врезаемся в заготовку на радиус инструмента
+    xy_cycle -- вызываем спираль XY
+    frame [g 00, cur_z + rpoinZ] --поднимаемся в Z r-point
+    frame [x $ -(rpoinXY + cur_d), y $ -(rpoinXY + cur_d)] -- позиционируемся на Z (R-point) для нового захода
 
-  {- Обработка второй стороны -}
-  cycleZ_condition #= fix (fi numStepsZ/2)  {- устанавливаем условие завершения цикла по Z для второй грани -}
-  cycle_type #= 1 {-назначаем обработку второй стороны-}
-  {- Отпарвляемся на цикл спирали для второй стороны с новыми условиями для завершения целых шагов -}
-  goto "spiral_cycle" {-отправляемся на цикл спирали-}
 
-  {-последний чистовой проход устанавливающий размер-}
-  label "last_spiral"
-  frame [z fullHigh] {-позиционируемся по Z-}
-  countZ #= 1
-  cycle_type #= 2 {-назначаем последний проход-}
-  goto "spiral_cycle" {-отправляемся на цикл спирали-}
-
-  {- Завершение программы -}
-  label "program_end"
-  z $ fullHigh + spointZ {- Поднимаемся в s-point  -}
-  frame [m 05] {- отключаем шпиндель -}
-  frame [m 09] {- отключаем эмульсию -}
-  frame [g 00, x 50.0, y 240.0, z 250.0]
-  frame [m 07]  {- дуем воздухом -}
-  frame [g 04, p 1500]  {- ждём 1.5 сек -}
-  frame [m 09]  {- отключаем воздух -}
-  
-xy_cycle stepXY partLenth fullThickness = do
+--функция спирали XY, содержит только перемещения в плане XY
+spiral_XY stepXY partLenth fullThickness = do
   cur_x <- sysVar 5001
   cur_y <- sysVar 5002
 
@@ -137,9 +116,26 @@ xy_cycle stepXY partLenth fullThickness = do
     gIf (cur_x > xp1) $ do frame [g 01, y $ - yp1]
                            break
 
+-- функция подготовки и предварительного позиционирования
+prepare_preposition_block nameTool rpoinXY cur_d fullHigh rpoinZ = do
+  frame [g 00, x $ -(rpoinXY + cur_d), y $ -(rpoinXY + cur_d)]  --Позиционируемся наверху для безопасного опускания
+  frame [g 43, h nameTool, z $ fullHigh + 150.0] -- коррекця по высоте инструмента + опускаемся до границы в 150мм по Z
+  frame [m 03, s 8000] --Запускаем шпиндель по часовой с оборотами 8000
+  frame [m 08] -- включаем эмульсию
+  frame [g 01, z $ fullHigh + rpoinZ, f 10000] -- переходим в R-point Z с подачей в 10000
+
+-- функция Завершения операции, отключение эмульсии, шпинделя, продувка заготовки
+operation_end fullHigh spointZ = do
+  z $ fullHigh + spointZ {- Поднимаемся в s-point  -}
+  frame [m 05] {- отключаем шпиндель -}
+  frame [m 09] {- отключаем эмульсию -}
+  frame [g 00, x 50.0, y 240.0, z 250.0]
+  frame [m 07]  {- дуем воздухом -}
+  frame [g 04, p 1500]  {- ждём 1.5 сек -}
+  frame [m 09]  {- отключаем воздух -}
+
 main = do
   putStrLn "%"
   putStrLn "O4001 (Gabarit AL  spiral 2 storoni)"
   putHCode hcode_prog2
-  putStrLn "M30"
   putStrLn "\n%"
