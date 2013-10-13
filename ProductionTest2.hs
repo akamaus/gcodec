@@ -34,7 +34,8 @@ hcode_prog2 = do
   cur_y <- sysVar 5002
   cur_z <- sysVar 5003
   fullHigh <- newVarE $ parallelHigh + partHigh  {- Вычисляем полную высоту от базы тисков #-}
-
+--только функции SDL
+  
   --начало самой программы
   --пошла сама программа
   frame [g 91, g 28, z 0] -- поднимаемся в референтную позицию по Z
@@ -108,27 +109,38 @@ hcode_prog2 = do
   g 40, y $ rpoinXY + cur_d * 3
   {- Завершение программы -}
 
+  z_feeding $ do
+    nameTool <- newVar (1 :: Int) # "instrument"
+    stepZ <- newVar (1 :: Double) # "shag po Z"
+    feedCut <- newVar 2400 # "vrezaie"
+    feedPlunge <- newVar 800 # "rezania"
+  change_tool nameTool
+  first_part_preposition_XY
+  
+
 -- обработка уступов 2х деталей
-double_part_2X_cycle partHigh terrace_width partThickness
-  stepZ <- newVar (1 :: Double) # "shag po Z"
-  feedCut <- newVar 2400 # "vrezaie"
-  feedPlunge <- newVar 800 # "rezania"
+double_part_2X_cycle partHigh terrace_width partThickness partLength allowance
+
   z_count <- newVar (0 : int)
+  y_part_dimension_from_center #= partThickness - terrace_width --задаём толщину оставшегося материала от центра в обоих направлениях для каждой детали
   cur_cycle_steps <- newVarE fix $ (partHigh - terrace_high) / stepZ
   while  (cur_cycle_steps < z_count) $ do
-    
+    exterior_cut_over_2_parts_X y_part_dimension_from_center partLength partThickness allowance
+    z_count #= z_count + 1
+
+  for 0 (< cur_cycle_steps) (+1) $ \_ -> do
+    exterior_cut_over_2_parts_X y_part_dimension_from_center partLength partThickness allowance
 
 
 
 -- проход по 2м деталям с внешней стороны
-exterior_cut_over_2_parts_in_X_direction y_part_dimension_from_center partLenth partThickness allowance
-  frame[ g 41, d 1, y $ - (partThickness + terrace_width + allowance )] --выходим на первую деталь
+exterior_cut_over_2_part s_X y_part_dimension_from_center partLenth partThickness allowance nameTool
+  frame[ g 41, d nameTool, y $ - (partThickness - y_part_dimension_from_center - allowance )] --выходим на первую деталь
   frame [g 01, x partLenth, f feedPlunge] --врезаемся в первую деталь
-  x $ - (cur_d + rpoinXY) --осуществляем резание на всю длинну
-  frame [g 41, d 1, y $ - (partThickness + terrace_width + allowance )] --выходим на вторую деталь
+  farme [x - rpoinXY, f feedCut] --осуществляем резание на всю длинну
+  frame [g 00, g 41, d nameTool, y $ - (partThickness + y_part_dimension_from_center + allowance )] --выходим на вторую деталь
   frame [g 01, x partLenth, f feedPlunge] -- врезаемся во вторую деталь
-  frame [x $ - (cur_d + rpoinXY)] -- осуществляем резанье на всю длинну
-  g 40
+  frame [x - rpoinXY, f feedCut] -- осуществляем резанье на всю длинну
 
 operation_end fullHigh spointZ = do
   z $ fullHigh + spointZ {- Поднимаемся в s-point  -}
