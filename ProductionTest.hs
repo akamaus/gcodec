@@ -13,16 +13,16 @@ hcode_prog2 = do
   
 -- блок переменных
   ofs_table <- sysTable "_OFS"
-  parallelHigh <- newVar 45.97 # "Visota paralelii"
+  parallelHigh <- newVar 0 # "Visota paralelii"
   comment "Razmeri detali"
   partHigh <- newVar 35.0 # "Visota zagotovoki"
   partLenth <- newVar 150.0 # "Dlina zagotovoki"
   partThickness <- newVar 50.0 # "Tolshina zagotovoki"
   numberOfparts  <- newVar (2 :: Int) # "Zagotovok v tiskah"
   comment "parametri obrabotki"
-  h_oversize <- newVar 5.2 # "Pripusk po H"
+  h_oversize <- newVar 1.0 # "Pripusk po H"
   nameTool <- newVar (1 :: Int) # "instrument"
-  stepXY <- newVar (25.0 :: Double) # "Shag po XY"
+  stepXY <- newVar (15.0 :: Double) # "Shag po XY"
   stepZ <- newVar 1.0 # "Shag po Z"
   feedCut <- newVar (2400 :: Double)# "vrezaie"
   feedPlunge <- newVar 800 # "rezania"
@@ -30,6 +30,7 @@ hcode_prog2 = do
   spointZ <- newVar 15.0 # "S-pointZ"
   rpoinZ <- newVar 2.0 #"R-pointZ"
   comment "System variables"
+  eps <- newVar (0.0001 :: Double) #"epsilon"
   fullThickness <- newVarE $ partThickness * fi numberOfparts
   cycle_type <-newVar (0::Int) {-тип текущего цилка по Z-}
   gIf (h_oversize < 2) $ do stepZ #= h_oversize / 2 {- учитываем детали с малым припуском  -}
@@ -54,16 +55,19 @@ hcode_prog2 = do
 
 --Обработка второй стороны
   --устанавливаем новую полную высоту после обработки первой стороны
-  fullHigh #= parallelHigh + (partHigh - fi (cycleZ_main_condition) * stepZ)
+  fullHigh #= parallelHigh + (partHigh + h_oversize - fi (cycleZ_main_condition) * stepZ)
   -- устанавливаем количество целых шагов цикла Z для второй стороны
-  cycleZ_main_condition #= numStepsZ - fix (fi numStepsZ/2)
+  cycleZ_main_condition #= fix (fi numStepsZ/2)
   prepare_preposition_block nameTool rpoinXY cur_d fullHigh rpoinZ --подготавлвиаемся к резанию
   -- выполняем цикл обработки Z - оставшая часть целых шагов
   z_one_iteration_cycle xy_cycle rpoinXY cur_d rpoinZ stepZ cycleZ_main_condition feedPlunge
   -- выполняем чистовой проход
-  z $ parallelHigh + partHigh --позиционируемся на финальную выстоу
-  frame [g 02, r (cur_d + rpoinXY), x 0, y 0, f feedPlunge] -- врезаемся в заготовку на радиус инструмента
-  xy_cycle -- вызываем спираль
+  
+  gIf ( h_oversize - fi numStepsZ * stepZ  > eps) $ do
+    z $ parallelHigh + partHigh --позиционируемся на финальную выстоу
+    frame [g 02, r (cur_d + rpoinXY), x 0, y 0, f feedPlunge] -- врезаемся в заготовку на радиус инструмента
+    xy_cycle -- вызываем спираль
+
   operation_end fullHigh spointZ --завершаем операцию
   -- выходим из программы
   m 30
