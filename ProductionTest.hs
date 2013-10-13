@@ -10,7 +10,6 @@ comment str = (return ()) # str
 
 hcode_prog2 :: HCode ()
 hcode_prog2 = do
-  
 -- блок переменных
   ofs_table <- sysTable "_OFS"
   parallelHigh <- newVar 0 # "Visota paralelii"
@@ -40,17 +39,27 @@ hcode_prog2 = do
   fullHigh <- newVarE $ parallelHigh + partHigh + h_oversize  {- Вычисляем полную высоту от базы тисков #-}
 --только SLD функции
   let xy_cycle = spiral_XY stepXY partLenth fullThickness
+  let z_cycle = z_one_iteration_cycle xy_cycle rpoinXY cur_d rpoinZ stepZ cycleZ_main_condition feedPlunge
+  let process_side proc_acts = do
+        --предварительное позиционирование XY, опускаемся на 150мм от заготовки
+        prepare_preposition_block nameTool rpoinXY cur_d fullHigh rpoinZ
+        -- основной цикл обработки
+        proc_acts
+        --завершаем операцию
+        operation_end fullHigh spointZ
+  let finishing = do
+        gIf ( h_oversize - fi numStepsZ * stepZ  > eps) $ do
+          z $ parallelHigh + partHigh --позиционируемся на финальную выстоу
+          frame [g 02, r (cur_d + rpoinXY), x 0, y 0, f feedPlunge] -- врезаемся в заготовку на радиус инструмента
+          xy_cycle -- вызываем спираль
 
 --пошла сама программа
   frame [g 91, g 28, z 0] -- поднимаемся в референтную позицию по Z
   frame [g 58, g 90, g 21, g 17, g 23, g 40, g 49, g 80] --строка безопасности
   frame [m 06, t nameTool] -- Меняем инструмент на указанный в настройках
---ставим инструмент, строка безопасности, предварительное позиционирование XY, опускаемся на 150мм от заговто 
-  prepare_preposition_block nameTool rpoinXY cur_d fullHigh rpoinZ
--- выполняем цикл обработки Z(первая округлённая вниз половина целых шагов)
-  z_one_iteration_cycle xy_cycle rpoinXY cur_d rpoinZ stepZ cycleZ_main_condition feedPlunge
---завершаем опрецию для перехода ко второй стороне
-  operation_end fullHigh spointZ
+
+  process_side z_cycle
+
   comment " [#3006=1] (Perevernut zagotovki cherz Y)" ---Останавливаемся и выводим сообщение !FIXME!
 
 --Обработка второй стороны
@@ -58,20 +67,13 @@ hcode_prog2 = do
   fullHigh #= parallelHigh + (partHigh + h_oversize - fi (cycleZ_main_condition) * stepZ)
   -- устанавливаем количество целых шагов цикла Z для второй стороны
   cycleZ_main_condition #= fix (fi numStepsZ/2)
-  prepare_preposition_block nameTool rpoinXY cur_d fullHigh rpoinZ --подготавлвиаемся к резанию
-  -- выполняем цикл обработки Z - оставшая часть целых шагов
-  z_one_iteration_cycle xy_cycle rpoinXY cur_d rpoinZ stepZ cycleZ_main_condition feedPlunge
-  -- выполняем чистовой проход
-  
-  gIf ( h_oversize - fi numStepsZ * stepZ  > eps) $ do
-    z $ parallelHigh + partHigh --позиционируемся на финальную выстоу
-    frame [g 02, r (cur_d + rpoinXY), x 0, y 0, f feedPlunge] -- врезаемся в заготовку на радиус инструмента
-    xy_cycle -- вызываем спираль
+  -- переходим к обработке второй стороны
+  process_side $ do
+    z_cycle --целые шаги
+    finishing -- чистовая обработка
 
-  operation_end fullHigh spointZ --завершаем операцию
   -- выходим из программы
   m 30
-
 
 -- объявление функций
 --функция основного цикла по Z, включает в себя позиционирование и врезание
