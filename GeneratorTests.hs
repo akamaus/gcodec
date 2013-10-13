@@ -107,12 +107,12 @@ samples = [ (hcode_prog1, "Example1"),
             (hcode_poligon, "Poligon drawer") ]
 
 main = do
-  putStrLn "***** GCode example: \n\n"
+  putStrLn "***** GCode example:"
   putGOps (LabelPrinter show show) gcode_prog1
 
   mapM_ gen_sample samples
 
- where gen_sample (code, descr) = do
+ where gen_sample (hcode, descr) = do
          putStrLn $ "***** " ++ descr ++ ":"
-         gcodeGen code
+         putHCode hcode
          putStrLn $ "***** " ++ descr ++ " Output finished\n"

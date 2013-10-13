@@ -27,19 +27,19 @@ instance Integral t => ToExpr t where
   toExpr = IntE
 
 instance RealFrac t => ToExpr t where
-  toExpr = FloatE
+  toExpr = RealE
 -}
 
 instance ToExpr Int where
   toExpr = IntE
 
 instance ToExpr Double where
-  toExpr = FloatE
+  toExpr = RealE
 
 data Expr t where
   BoolE :: Bool -> Expr W.Bool
   IntE :: Integral t => t -> Expr t
-  FloatE :: RealFrac t => t -> Expr t
+  RealE :: RealFrac t => t -> Expr t
   Unary :: OpName -> Expr a -> Expr a
   Cast :: Expr a -> Expr t
   Add :: Num t => Expr t -> Expr t -> Expr t
@@ -105,7 +105,7 @@ fi = Cast
 eval :: Expr t -> GExpr
 eval (BoolE b) = G_Int $ fromEnum b
 eval (IntE n) =  G_Int $ fromIntegral n
-eval (FloatE n) = G_Float $ realToFrac n
+eval (RealE n) = G_Real $ realToFrac n
 
 eval (Unary op e) = G_Unary op (eval e)
 eval (Cast e) = eval e

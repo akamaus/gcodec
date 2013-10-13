@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module  GCode where
 
+import Geometry(RealT)
+
 import Blaze.ByteString.Builder
 import Blaze.ByteString.Builder.Char.Utf8(fromChar, fromShow)
 import Control.Monad.RWS
@@ -49,7 +51,7 @@ data GExpr = G_Unary OpName GExpr
            | G_Add GExpr GExpr | G_Sub GExpr GExpr | G_Mul GExpr GExpr | G_Div GExpr GExpr
            | G_Gt GExpr GExpr | G_Ge GExpr GExpr | G_Eq GExpr GExpr
            | G_And GExpr GExpr | G_Or GExpr GExpr | G_Xor GExpr GExpr
-           | G_Int Int | G_Float Float | G_Read GCell deriving (Eq, Ord, Show)
+           | G_Int Int | G_Real RealT | G_Read GCell deriving (Eq, Ord, Show)
 
 -- used for printing Labels on frames and in gotos
 data LabelPrinter = LabelPrinter { lp_frame :: Label -> String, lp_ref :: Label -> String }
@@ -88,7 +90,7 @@ gexprGen (G_Or e1 e2) =  bracket $ gexprGen e1 <> bs " OR "  <> gexprGen e2
 gexprGen (G_Xor e1 e2) = error "buggy on cnc" -- bracket $ gexprGen e1 <> bs " XOR " <> gexprGen e2
 gexprGen (G_Read cell) = gcellGen cell
 gexprGen (G_Int i) = fromShow i
-gexprGen (G_Float i) = fromShow i
+gexprGen (G_Real i) = fromShow i
 
 ginstrGen (GInstrI c k) = fromChar c <> fromShow k
 ginstrGen (GInstrE c e) = fromChar c <> gexprGen e
@@ -105,6 +107,10 @@ endl = fromChar '\n'
 
 strToBS :: String -> S.ByteString
 strToBS = S.pack . map (toEnum . fromEnum)
+
+gcodeToBS :: LabelPrinter -> GOperator -> LS.ByteString
+gcodeToBS printer g = toLazyByteString $ runReader (gopGen g) printer
+
 -- IO Printer
 putGOps :: LabelPrinter -> GOperator -> IO ()
-putGOps printer g = LS.putStr $ toLazyByteString $ runReader (gopGen g) printer
+putGOps printer = LS.putStr . gcodeToBS printer
