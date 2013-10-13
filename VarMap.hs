@@ -32,16 +32,15 @@ empty_vm = VarMap { _vm_free = S.fromList $ map GCell [100..200]
 
 vm_allocate :: (MonadState s m, Functor m) => (s :-> VarMap) -> VarRequest -> m (Cell a)
 vm_allocate vm_lens req = Cell <$> case req of
-  VR_FreeCommon ->  modifyAndGet (vm_free . vm_lens)   $ \bank -> bank_allocate Nothing bank
-  VR_System cell -> modifyAndGet (vm_system . vm_lens) $ \bank -> bank_allocate (Just cell) bank
+  VR_FreeCommon ->  modifyAndGet (vm_free . vm_lens)   $ \bank -> bank_allocate_free bank
+  VR_System cell -> modifyAndGet (vm_system . vm_lens) $ \bank -> bank_allocate_system cell bank
 
-bank_allocate :: Maybe GCell -> VarBank -> (GCell, VarBank)
-bank_allocate mcell bank = let
-    c = case mcell of
-          Nothing -> case S.toList bank of
-            (c1:_) -> c1
-            [] -> error $ "no free cells, can't allocate a variable"
-          Just needed@(GCell n) -> case S.member needed bank of
-            True -> needed
-            False -> error $ printf "Can't assign a name to non-free cell %d" n
-    in (c, S.delete c bank)
+bank_allocate_free :: VarBank -> (GCell, VarBank)
+bank_allocate_free bank = case S.toList bank of
+  (c:_) -> (c, S.delete c bank)
+  [] -> error $ "no free cells, can't allocate a variable"
+
+bank_allocate_system :: GCell -> VarBank -> (GCell, VarBank)
+bank_allocate_system cell@(GCell n) bank = case S.member cell bank of
+  True -> (cell, bank)
+  False -> error $ printf "Can't assign a name to non-existent system cell %d" n
