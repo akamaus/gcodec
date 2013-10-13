@@ -117,3 +117,5 @@ generator_tests = do
          putStrLn $ "***** " ++ descr ++ ":"
          putHCode hcode
          putStrLn $ "***** " ++ descr ++ " Output finished\n"
+
+main = generator_tests
