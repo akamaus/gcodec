@@ -104,8 +104,7 @@ putHCode hcode = do
                                label_renamer n = fromMaybe (error "PANIC: label renamer can't find a label") $ lookup n label_list
                                label_printer = LabelPrinter { lp_frame = ('N':) . label_renamer, lp_ref = label_renamer}
                            putGOps label_printer gcode
-
--- Generates a code and prints it on stdout
+-- Generates a code and prints errors on stdout
 gcodeGen :: HCode () -> IO (Maybe (GCompileState, GOperator))
 gcodeGen hcode = do
   let (_, st, (warns, errs, gcode)) = RWS.runRWS (hcode >> genAccumulated >> check_labels) [] init_cs

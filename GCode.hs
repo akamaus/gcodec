@@ -109,8 +109,8 @@ strToBS :: String -> S.ByteString
 strToBS = S.pack . map (toEnum . fromEnum)
 
 gcodeToBS :: LabelPrinter -> GOperator -> LS.ByteString
-gcodeToBS label_trans g = toLazyByteString $ runReader (gopGen g) label_trans
+gcodeToBS printer g = toLazyByteString $ runReader (gopGen g) printer
 
 -- IO Printer
 putGOps :: LabelPrinter -> GOperator -> IO ()
-putGOps printer g = LS.putStr $ toLazyByteString $ runReader (gopGen g) printer
+putGOps printer = LS.putStr . gcodeToBS printer

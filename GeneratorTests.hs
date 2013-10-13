@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+module GeneratorTests where
 
 import GCode
 import HCode
@@ -106,7 +107,7 @@ samples = [ (hcode_prog1, "Example1"),
             (hcode_for, "for loop"),
             (hcode_poligon, "Poligon drawer") ]
 
-main = do
+generator_tests = do
   putStrLn "***** GCode example:"
   putGOps (LabelPrinter show show) gcode_prog1
 
@@ -116,3 +117,5 @@ main = do
          putStrLn $ "***** " ++ descr ++ ":"
          putHCode hcode
          putStrLn $ "***** " ++ descr ++ " Output finished\n"
+
+main = generator_tests
