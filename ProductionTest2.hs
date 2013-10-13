@@ -19,7 +19,7 @@ hcode_prog2 = do
   partLenth <- newVar 244.0 # "Dlina zagotovoki"
   partThickness <- newVar 28.0 # "Tolshina zagotovoki"
   terrace_width <- newVar 20.0 #"shirina ustupa"
-  terrace_high <- newVar 45.8 #"visot ustupa"
+  terrace_high <- newVar 45.8 #"visota ustupa"
   angle_near_wall <- newVar 30 #"ugol okolo stenki"
   near_wall_high <- 1.5 #"uglublenie okolo stenki"
   near_wall_width <- 3.0 #"ruchei u stenki"
@@ -36,21 +36,17 @@ hcode_prog2 = do
   fullHigh <- newVarE $ parallelHigh + partHigh  {- Вычисляем полную высоту от базы тисков #-}
 
   --начало самой программы
-  frame [g 91, g 28, z 0]  {- поднимаемся в 0 по Z -}
-  frame [g 58, g 90, g 21, g 17, g 23, g 40, g 49, g 80]
-  frame [m 06, t 1]
-  frame [m 03, s 6500] {- Запускаем шпиндель по часовой с оборотами 6500 -}
-  frame [m 08] {- включаем эмульсию -}
-  frame [g 00, x $ -(rpoinXY + cur_d), y $ -(rpoinXY + cur_d * 3)]  {-Позиционируемся наверху -}
+  --пошла сама программа
+  frame [g 91, g 28, z 0] -- поднимаемся в референтную позицию по Z
+  frame [g 58, g 90, g 21, g 17, g 23, g 40, g 49, g 80] --строка безопасности
+  frame [m 06, t nameTool] -- Меняем инструмент на указанный в настройках
+  
+
   frame [g 43, h nameTool, z $ fullHigh + spointZ ] {- активируем коррекцию по высоте заданого инструмент и опускаемся в S-point -}
   frame [g 01, z $ fullHigh, f feedCut] {-Опускаемся на уровень Z0 заготовки-}
 
   -- Черновой Цикл обработки первой детали
-  stepZ #= 1
-  cur_cycle_steps #= fix $ (partHigh - terrace_high) / stepZ
-  feedCut <- newVar 2400 # "vrezaie"
-  feedPlunge <- newVar 800 # "rezania"
-
+  
   label "first_cycle_part1_start" --собственно сам первый черновой цикл
   gIf (countZ  => cur_cycle_steps) $ goto "first_cycle_part1_end"
   g 41, d 1, y $ -terrace_width + allowance
@@ -111,7 +107,30 @@ hcode_prog2 = do
   x $ partLenth + rpoinXY,f feedCut
   g 40, y $ rpoinXY + cur_d * 3
   {- Завершение программы -}
-  label "program_end"
+
+-- обработка уступов 2х деталей
+double_part_2X_cycle partHigh terrace_width partThickness
+  stepZ <- newVar (1 :: Double) # "shag po Z"
+  feedCut <- newVar 2400 # "vrezaie"
+  feedPlunge <- newVar 800 # "rezania"
+  z_count <- newVar (0 : int)
+  cur_cycle_steps <- newVarE fix $ (partHigh - terrace_high) / stepZ
+  while  (cur_cycle_steps < z_count) $ do
+    
+
+
+
+-- проход по 2м деталям с внешней стороны
+exterior_cut_over_2_parts_in_X_direction y_part_dimension_from_center partLenth partThickness allowance
+  frame[ g 41, d 1, y $ - (partThickness + terrace_width + allowance )] --выходим на первую деталь
+  frame [g 01, x partLenth, f feedPlunge] --врезаемся в первую деталь
+  x $ - (cur_d + rpoinXY) --осуществляем резание на всю длинну
+  frame [g 41, d 1, y $ - (partThickness + terrace_width + allowance )] --выходим на вторую деталь
+  frame [g 01, x partLenth, f feedPlunge] -- врезаемся во вторую деталь
+  frame [x $ - (cur_d + rpoinXY)] -- осуществляем резанье на всю длинну
+  g 40
+
+operation_end fullHigh spointZ = do
   z $ fullHigh + spointZ {- Поднимаемся в s-point  -}
   frame [m 05] {- отключаем шпиндель -}
   frame [m 09] {- отключаем эмульсию -}
@@ -120,10 +139,13 @@ hcode_prog2 = do
   frame [g 04, p 1500]  {- ждём 1.5 сек -}
   frame [m 09]  {- отключаем воздух -}
 
--- МУСОРНЫЕ лейблы
-  label "exit_X20"
-  label "exit_X30"
-  label "exit_Y40"
+--препозиция XY для первой детали
+first_part_preposition_XY rpoinXY cur_d = do
+  frame [g 00, x $ -(rpoinXY + cur_d), y $ -(rpoinXY + cur_d * 3)]
+
+--препозиция XY для второй детали
+second_part_prepositon_XY partLent rpoinX = do
+  frame [g 00, x $ partLength + rpoinXY + cur_d, y $ - (partThickness * 3 + cur_d + rpoinXY)]
 
 main = do
   putStrLn "%"

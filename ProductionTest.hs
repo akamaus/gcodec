@@ -24,7 +24,7 @@ hcode_prog2 = do
   nameTool <- newVar (1 :: Int) # "instrument"
   stepXY <- newVar (25.0 :: Double) # "Shag po XY"
   stepZ <- newVar 1.0 # "Shag po Z"
-  feedCut <- newVar 2400 # "vrezaie"
+  feedCut <- newVar (2400 :: Double)# "vrezaie"
   feedPlunge <- newVar 800 # "rezania"
   rpoinXY <- newVar 5.0 # "R-pointXY"
   spointZ <- newVar 15.0 # "S-pointZ"
@@ -47,7 +47,7 @@ hcode_prog2 = do
 --ставим инструмент, строка безопасности, предварительное позиционирование XY, опускаемся на 150мм от заговто 
   prepare_preposition_block nameTool rpoinXY cur_d fullHigh rpoinZ
 -- выполняем цикл обработки Z(первая округлённая вниз половина целых шагов)
-  z_one_iteration_cycle rpoinXY cur_d fullHigh rpoinZ stepZ cycleZ_main_condition feedPlunge
+  z_one_iteration_cycle xy_cycle rpoinXY cur_d rpoinZ stepZ cycleZ_main_condition feedPlunge
 --завершаем опрецию для перехода ко второй стороне
   operation_end fullHigh spointZ
   comment " [#3006=1] (Perevernut zagotovki cherz Y)" ---Останавливаемся и выводим сообщение !FIXME!
@@ -59,7 +59,7 @@ hcode_prog2 = do
   cycleZ_main_condition #= numStepsZ - fix (fi numStepsZ/2)
   prepare_preposition_block nameTool rpoinXY cur_d fullHigh rpoinZ --подготавлвиаемся к резанию
   -- выполняем цикл обработки Z - оставшая часть целых шагов
-  z_one_iteration_cycle rpoinXY cur_d fullHigh rpoinZ stepZ cycleZ_main_condition feedPlunge
+  z_one_iteration_cycle xy_cycle rpoinXY cur_d rpoinZ stepZ cycleZ_main_condition feedPlunge
   -- выполняем чистовой проход
   z $ parallelHigh + partHigh --позиционируемся на финальную выстоу
   frame [g 02, r (cur_d + rpoinXY), x 0, y 0, f feedPlunge] -- врезаемся в заготовку на радиус инструмента
@@ -75,12 +75,12 @@ z_one_iteration_cycle xy_cycle rpoinXY cur_d rpoinZ stepZ cycleZ_main_condition 
   cur_z <- sysVar 5003 --инициализируем системную переменную Z на конец предыдущего блока
   countZ <- newVar (0 :: Int) {-счётчик текущих итераций по Z-}
 
-  while cycleZ_main_condition > countZ $ do --Цикл обработки по Z
+  while (cycleZ_main_condition > countZ) $ do --Цикл обработки по Z
     z $ cur_z - rpoinZ - stepZ --опускаемся в плоскость резания из r-point
     countZ #= countZ + 1 --увеличиваем счётчик Z
     frame [g 02, r (cur_d + rpoinXY), x 0, y 0, f feedPlunge] -- врезаемся в заготовку на радиус инструмента
     xy_cycle -- вызываем спираль XY
-    frame [g 00, cur_z + rpoinZ] --поднимаемся в Z r-point
+    frame [g 00, z $ cur_z + rpoinZ] --поднимаемся в Z r-point
     frame [x $ -(rpoinXY + cur_d), y $ -(rpoinXY + cur_d)] -- позиционируемся на Z (R-point) для нового захода
 
 
