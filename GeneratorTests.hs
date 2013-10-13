@@ -107,13 +107,8 @@ samples = [ (hcode_prog1, "Example1"),
             (hcode_poligon, "Poligon drawer") ]
 
 main = do
-<<<<<<< HEAD:GeneratorTests.hs
   putStrLn "***** GCode example:"
-  putGOps show gcode_prog1
-=======
-  putStrLn "***** GCode example: \n\n"
   putGOps (LabelPrinter show show) gcode_prog1
->>>>>>> d245e114b5064a58378be3c4f450042824d2dcdf:Tests.hs
 
   mapM_ gen_sample samples
 

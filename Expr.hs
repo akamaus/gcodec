@@ -103,7 +103,8 @@ fi = Cast
 
 -- Evaluating type-save Exprs to untyped GExprs suited for generation gcode
 eval :: Expr t -> GExpr
-eval (BoolE b) = G_Int . fromEnum $ b
+eval (BoolE True) = G_Eq (G_Int 42) (G_Int 42)
+eval (BoolE False) = G_Eq (G_Int 41) (G_Int 43)
 eval (IntE n) = G_Int $ fromIntegral n
 eval (RealE n) = G_Real $ realToFrac n
 
@@ -120,6 +121,6 @@ eval (Gt e1 e2) = G_Gt (eval e1) (eval e2)
 eval (Ge e1 e2) = G_Ge (eval e1) (eval e2)
 eval (And e1 e2) = G_And (eval e1) (eval e2)
 eval (Or e1 e2) = G_Or (eval e1) (eval e2)
-eval (Not e1) = G_Not (eval e1)
+eval (Not e1) = G_Xor (eval W.true) (eval e1)
 
 eval (Read c) = G_Read $ unCell c
