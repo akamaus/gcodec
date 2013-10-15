@@ -35,7 +35,7 @@ data GCompileState = GCS {
   _gsc_acc :: Maybe GOperator  -- operator currently being assembled
   } deriving Show
 
-data CompileEnv = CompileEnv { _ce_ext_labels :: [Label] }
+data CompileEnv = CompileEnv { _ce_ext_labels :: [Label], _ce_gwhile_depth :: Int }
 
 mkLabels [''CompileEnv, ''GCompileState]
 
@@ -57,7 +57,7 @@ genAccumulated = do
 
 -- Init compiler state
 init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [], _gsc_fresh_label = AutoLabel 1, _gsc_acc = Nothing }
-init_ce = CompileEnv { _ce_ext_labels = [] }
+init_ce = CompileEnv { _ce_ext_labels = [], _ce_gwhile_depth = 1 }
 
 -- Runs a computation storing a given projection of state
 saving l m = do
@@ -163,6 +163,14 @@ infixr 1 #=
 (#=) :: Expr a -> Expr a -> HCode ()
 (#=) (Read c) e = gen $ GAssign (unCell c) (eval e)
 (#=) _ e = error "Left side of an assignment must be a variable"
+
+gwhile :: Expr W.Bool -> HCode () -> HCode ()
+gwhile cond body = do
+  depth <- L.asks ce_gwhile_depth
+  when (depth > 3) $ warn $ printf "Generating while of depth %d" depth
+  let expr = eval cond
+  code <- L.local ce_gwhile_depth (+1) $ saving gsc_vars $ local_block body
+  gen $ GWhile depth expr code
 
 -- Generates a while loop, implemented using IF and GOTO, cause WHILE badly interacts with goto
 while :: Expr W.Bool -> HCode () -> HCode ()

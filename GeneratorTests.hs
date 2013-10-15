@@ -44,7 +44,7 @@ hcode_prog2 = do
   cur_y <- newVar 5.0
   count <- newVar (0 :: Int)
   while (cur_x < 100) $ do
-    while (cur_y < 200) $ do
+    gwhile (cur_y < 200) $ do
       count #= count + 1
       frame [g 100, f (speed), s (speed2), x $ cur_x, y $ cur_y] # "fast move"
       frame [g 101, z 0]
