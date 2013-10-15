@@ -101,11 +101,20 @@ hcode_for = do
   tst <- newVar (42 :: Int)
   m 30
 
+hcode_gwhile = do
+  k <- newVar (1 :: Int)
+  gwhile (k < 100) $ do
+    x $ fi k
+    gIf (k > 10) $ break
+    y $ fi k
+  m 30
+
 samples = [ (hcode_prog1, "Example1"),
             (hcode_prog2, "Example2"),
             (hcode_if_loops, "if_loops - test for compound operators in if branches"),
             (hcode_for, "for loop"),
-            (hcode_poligon, "Poligon drawer") ]
+            (hcode_poligon, "Poligon drawer"),
+            (hcode_gwhile, "gwhile with break") ]
 
 generator_tests = do
   putStrLn "***** GCode example:"

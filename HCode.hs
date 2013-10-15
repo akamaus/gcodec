@@ -169,8 +169,11 @@ gwhile cond body = do
   depth <- L.asks ce_gwhile_depth
   when (depth > 3) $ warn $ printf "Generating while of depth %d" depth
   let expr = eval cond
-  code <- L.local ce_gwhile_depth (+1) $ saving gsc_vars $ local_block body
+  rest_prog_lbl <- freshLabel
+  code <- L.local ce_ext_labels (rest_prog_lbl :) $ L.local ce_gwhile_depth (+1) $ saving gsc_vars $ local_block body
   gen $ GWhile depth expr code
+  genLabel rest_prog_lbl
+  refLabel rest_prog_lbl
 
 -- Generates a while loop, implemented using IF and GOTO, cause WHILE badly interacts with goto
 while :: Expr W.Bool -> HCode () -> HCode ()
