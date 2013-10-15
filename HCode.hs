@@ -147,16 +147,20 @@ sysTable name = do let table e = GTable (mkTableName name) (eval e)
 gIf :: Expr W.Bool -> HCode () -> HCode ()
 gIf pred branch = do
   let gp = eval pred
-  rest_prog <- freshLabel
-  branch_lbl <- freshLabel
   code <- saving gsc_vars $ local_block branch
-  gen $ GIf gp branch_lbl
-  gen $ GGoto rest_prog
-  genLabel $ branch_lbl
-  gen $ code
-  genLabel rest_prog
-  refLabel branch_lbl -- we used both labels so record this fact
-  refLabel rest_prog
+  case code of
+    GOps [GGoto lbl] comment -> -- in case we have a simple goto we can put right into the 'if' body
+      gen $ GOps [GIf gp lbl] comment
+    large_code -> do
+      rest_prog <- freshLabel
+      branch_lbl <- freshLabel
+      gen $ GIf gp branch_lbl
+      gen $ GGoto rest_prog
+      genLabel $ branch_lbl
+      gen $ code
+      genLabel rest_prog
+      refLabel branch_lbl -- we used both labels so record this fact
+      refLabel rest_prog
 
 -- emits Assignment
 infixr 1 #=
