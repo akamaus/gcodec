@@ -25,7 +25,7 @@ type CompileResults = ([Warning],[Error],GOperator)
 type Warning = String
 type Error = String
 
-type HCode = RWS.RWS [Label] CompileResults GCompileState
+type HCode = RWS.RWS CompileEnv CompileResults GCompileState
 
 data GCompileState = GCS {
   _gsc_vars :: VarMap, -- mapping from symbolic variables to numeric memory cells
@@ -35,7 +35,9 @@ data GCompileState = GCS {
   _gsc_acc :: Maybe GOperator  -- operator currently being assembled
   } deriving Show
 
-mkLabels [''GCompileState]
+data CompileEnv = CompileEnv { _ce_ext_labels :: [Label] }
+
+mkLabels [''CompileEnv, ''GCompileState]
 
 -- Helpers for generating warnings, errors and code
 warn w = RWS.tell ([w],        RWS.mempty, RWS.mempty)
@@ -55,6 +57,7 @@ genAccumulated = do
 
 -- Init compiler state
 init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [], _gsc_fresh_label = AutoLabel 1, _gsc_acc = Nothing }
+init_ce = CompileEnv { _ce_ext_labels = [] }
 
 -- Runs a computation storing a given projection of state
 saving l m = do
@@ -107,7 +110,7 @@ putHCode hcode = do
 -- Generates a code and prints errors on stdout
 gcodeGen :: HCode () -> IO (Maybe (GCompileState, GOperator))
 gcodeGen hcode = do
-  let (_, st, (warns, errs, gcode)) = RWS.runRWS (hcode >> genAccumulated >> check_labels) [] init_cs
+  let (_, st, (warns, errs, gcode)) = RWS.runRWS (hcode >> genAccumulated >> check_labels) init_ce init_cs
   when (not $ null warns) $ hPutStrLn stderr $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
     True -> do hPutStrLn stderr $ printf "Errors:\n%s\n" $ unlines errs
@@ -169,7 +172,7 @@ while pred body = do
   while_lbl <- freshLabel
   genLabel while_lbl
   gen $ GIf gp rest_prog_lbl
-  code <- RWS.local (rest_prog_lbl :) $ saving gsc_vars $ local_block body
+  code <- L.local ce_ext_labels (rest_prog_lbl :) $ saving gsc_vars $ local_block body
   gen code
   gen $ GGoto while_lbl
   genLabel rest_prog_lbl
@@ -193,7 +196,7 @@ break = break_n 1
 break_n :: Int -> HCode ()
 break_n n | n < 1 = error "break_n should be called with a positive number, which specifies how many level of blocks to float up"
           | True = do
-            escape_labels <- RWS.ask
+            escape_labels <- L.asks ce_ext_labels
             case drop (n-1) escape_labels of
               [] -> error $ "can't break " ++ show n ++ if n>1 then " levels" else " level"
               (lbl:_) -> gen $ GGoto lbl
