@@ -247,7 +247,7 @@ class CInstruction con where
   t :: Expr Int -> con ()
   s :: Expr Double -> con ()
   f :: Expr Double -> con ()
-  d :: Int -> con ()
+  d :: Expr Int -> con ()
   h :: Expr Int -> con ()
   x :: Expr Double -> con ()
   y :: Expr Double -> con ()
@@ -266,7 +266,7 @@ instance CInstruction GInstruction where
   t = GInstrE 'T' . eval
   s = GInstrE 'S' . eval
   f = GInstrE 'F' . eval
-  d = check_diap 0 1000 . GInstrI 'D'
+  d = GInstrE 'D' . eval
   h = GInstrE 'H' . eval
   x = GInstrE 'X' . eval
   y = GInstrE 'Y' . eval
