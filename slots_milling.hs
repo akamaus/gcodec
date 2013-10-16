@@ -36,18 +36,18 @@ hcode_prog2 = do
   fy_slot_int_R <- newVar (4.5:: Double) # "2 paz po y vnutri R"
 
   comment "parametri obrabotki"
-  rpoinXY <- newVar 5.0 # "R-pointXY"
+  rpoinXY <- newVar (5.0 ::Double) # "R-pointXY"
   spointZ <- newVar (15.0:: Double) # "S-pointZ"
-  rpointZ <- newVar 2.0 #"R-pointZ"
+  rpointZ <- newVar (2.0 ::Double) #"R-pointZ"
   nameTool <- newVar (15 :: Int) # "instrument"
   stepZ <- newVar (1 :: Double) # "shag po Z"
-  feedCut <- newVar (2400) # "vrezaie"
-  feedPlunge <- newVar (800) # "rezania"
+  feedCut <- newVar (2400 :: Double) # "vrezaie"
+  feedPlunge <- newVar (800  :: Double) # "rezania"
   cur_d <- newVar (0 :: Double) # "R-instrumenta"
   comment "System variables"
-  cur_x <- sysVar 5001
-  cur_y <- sysVar 5002
-  cur_z <- sysVar 5003
+  cur_x <- sysVar 5001 :: HCode (Expr Double)
+  cur_y <- sysVar 5002 :: HCode (Expr Double)
+  cur_z <- sysVar 5003 :: HCode (Expr Double)
   fullHigh <- newVarE $ parallelHigh + partHigh  {- Вычисляем полную высоту от базы тисков #-}
 --только функции SDL
   let ?rpoinXY = rpoinXY
@@ -77,9 +77,9 @@ mill_x_slot cur_y slot_length slot_depth slotR = do
     frame [g 01, z $ ?fullHigh + ?spointZ, f 10000]
     frame [z $ ?fullHigh, f ?feedCut]
     frame [g 41,d ?nameTool, y $ cur_y - slotR] -- !!!!!!! вот содержащая cur_y строчка
-    steps <- newVarE $ fix (slot_depth / ?stepZ)
+    steps <- newVarE (fix (slot_depth / ?stepZ :: Expr Double) :: Expr Int)
     --while (steps > 0) $ do
-    steps #= steps - 1.0
+    steps #= steps - 1
     --frame [g 01, x $ cur_x + ?cur_d, z $ cur_z - ?stepZ, ?feedPlunge]
     --  mill_x_one_iteration cur_x cur_y slotR slot_length
     --frame [g 01, x $ cur_x + ?cur_d, z $ ?fullHigh - slot_depth, ?feedPlunge] -- финишная высота
