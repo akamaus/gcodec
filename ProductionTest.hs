@@ -100,7 +100,7 @@ spiral_XY stepXY partLenth fullThickness = do
   xp1 <- newVarE (partLenth)
   yp1 <- newVarE (fullThickness)
 
-  while true $ do --Цикл обработки по XY (итерационный)
+  gwhile true $ do --Цикл обработки по XY (итерационный)
     frame [g 01, x xp1] {- переходим на подачу резанья по длине 1 -}
     frame [g 2, x $ xp1 + stepXY , y yp0, r  $ stepXY ] {- поворачиваем на обратный ход 2 -}
     gIf (cur_y < -(yp1 - stepXY) ) $ do --frame [g 01, x xp0]
