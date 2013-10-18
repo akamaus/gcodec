@@ -8,16 +8,16 @@ import AwePrelude
 import Prelude(Num(..), Fractional(..), Floating(..), Int, ($), id, putStrLn, (++), show)
 import Control.Monad(mapM_)
 
-gcode_prog1 = GOps
-  [ GLabel (UserLabel "start")
-  , GAssign (GCell 101) (G_Add (G_Read $ GCell 101) (G_Int 42))
-  , GFrame [GInstrI 'G' 1, GInstrE 'X' (G_Read $ GCell 101), GInstrE 'Y' (G_Read $ GCell 100), GInstrE 'Z' (G_Int 20)]
-  , GAssign (GCell 100) (G_Sub (G_Read $ GCell 100) (G_Int 5))
-  , GIf (G_Gt (G_Read (GCell 100)) (G_Int 0))
+fcode_prog1 = FOps
+  [ FLabel (UserLabel "start")
+  , FAssign (FCell 101) (F_Add (F_Read $ FCell 101) (F_Int 42))
+  , FFrame [FInstrI 'G' 1, FInstrE 'X' (F_Read $ FCell 101), FInstrE 'Y' (F_Read $ FCell 100), FInstrE 'Z' (F_Int 20)]
+  , FAssign (FCell 100) (F_Sub (F_Read $ FCell 100) (F_Int 5))
+  , FIf (F_Gt (F_Read (FCell 100)) (F_Int 0))
       (UserLabel "start")
-  , GLabel (UserLabel "end")
-  , GFrame [GInstrI 'M' 100]
-  , GOps [GFrame [GInstrI 'M' 30]] ""
+  , FLabel (UserLabel "end")
+  , FFrame [FInstrI 'M' 100]
+  , FOps [FFrame [FInstrI 'M' 30]] ""
   ] "a test program"
 
 hcode_prog1 :: HCode ()
@@ -118,7 +118,7 @@ samples = [ (hcode_prog1, "Example1"),
 
 generator_tests = do
   putStrLn "***** FanucMacro example:"
-  putGOps (LabelPrinter show show) gcode_prog1
+  putFOps (LabelPrinter show show) fcode_prog1
 
   mapM_ gen_sample samples
 

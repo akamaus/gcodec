@@ -21,23 +21,23 @@ import qualified Control.Monad.RWS as RWS
 import qualified Data.Label.PureM as L
 import qualified Data.Set as S
 
-type CompileResults = ([Warning],[Error],GOperator)
+type CompileResults = ([Warning],[Error],FOperator)
 type Warning = String
 type Error = String
 
-type HCode = RWS.RWS CompileEnv CompileResults GCompileState
+type HCode = RWS.RWS CompileEnv CompileResults FCompileState
 
-data GCompileState = GCS {
+data FCompileState = FCS {
   _gsc_vars :: VarMap, -- mapping from symbolic variables to numeric memory cells
   _gsc_ref_labels :: S.Set Label, -- labels referenced from generated code
   _gsc_gen_labels :: [Label],  -- already generated labels
   _gsc_fresh_label :: Label,
-  _gsc_acc :: Maybe GOperator  -- operator currently being assembled
+  _gsc_acc :: Maybe FOperator  -- operator currently being assembled
   } deriving Show
 
 data CompileEnv = CompileEnv { _ce_ext_labels :: [Label], _ce_gwhile_depth :: Int }
 
-mkLabels [''CompileEnv, ''GCompileState]
+mkLabels [''CompileEnv, ''FCompileState]
 
 -- Helpers for generating warnings, errors and code
 warn w = RWS.tell ([w],        RWS.mempty, RWS.mempty)
@@ -56,7 +56,7 @@ genAccumulated = do
 
 
 -- Init compiler state
-init_cs = GCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [], _gsc_fresh_label = AutoLabel 1, _gsc_acc = Nothing }
+init_cs = FCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [], _gsc_fresh_label = AutoLabel 1, _gsc_acc = Nothing }
 init_ce = CompileEnv { _ce_ext_labels = [], _ce_gwhile_depth = 1 }
 
 -- Runs a computation storing a given projection of state
@@ -66,8 +66,8 @@ saving l m = do
   L.puts l st
   return res
 
--- Generates a code block and returns it
-local_block :: HCode () -> HCode GOperator
+-- Fenerates a code block and returns it
+local_block :: HCode () -> HCode FOperator
 local_block block = do genAccumulated
                        liftM snd . RWS.censor (\(w,e,c) -> (w,e,RWS.mempty)) . RWS.listens (\(_,_,c) -> c) $ block >> genAccumulated
 
@@ -84,7 +84,7 @@ genLabel lbl = do
   labels <- L.gets gsc_gen_labels
   case elem lbl labels of
     False -> do L.puts gsc_gen_labels (lbl:labels)
-                gen $ GLabel lbl
+                gen $ FLabel lbl
     True -> error $ printf "labels must be unique, but %s is already defined" (show lbl)
 
 -- Validated labels mentioned in generated code
@@ -97,7 +97,7 @@ check_labels = do
   mapM_ (\lbl -> warn $ printf "Unused label: %s" (show lbl)) (S.toList unused_lbls)
   mapM_ (\lbl -> err $ printf "unknown label: %s" (show lbl)) (S.toList unknown_lbls)
 
--- Generates a code and prints it on stdout
+-- Fenerates a code and prints it on stdout
 putHCode :: HCode () -> IO ()
 putHCode hcode = do
   gen_res <- fanucGen hcode
@@ -106,9 +106,9 @@ putHCode hcode = do
     Just (st, gcode) -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (printf "%04d") [10 :: Int, 20 ..])
                                label_renamer n = fromMaybe (error "PANIC: label renamer can't find a label") $ lookup n label_list
                                label_printer = LabelPrinter { lp_frame = ('N':) . label_renamer, lp_ref = label_renamer}
-                           putGOps label_printer gcode
--- Generates a code and prints errors on stdout
-fanucGen :: HCode () -> IO (Maybe (GCompileState, GOperator))
+                           putFOps label_printer gcode
+-- Fenerates a code and prints errors on stdout
+fanucGen :: HCode () -> IO (Maybe (FCompileState, FOperator))
 fanucGen hcode = do
   let (_, st, (warns, errs, gcode)) = RWS.runRWS (hcode >> genAccumulated >> check_labels) init_ce init_cs
   when (not $ null warns) $ hPutStrLn stderr $ printf "Warnings:\n%s\n" $ unlines warns
@@ -133,13 +133,13 @@ newVarE v0 = do n <- gRead <$> vm_allocate gsc_vars VR_FreeCommon
                 n #= v0
                 return n
 
--- Gives a name to a cell
+-- Fives a name to a cell
 sysVar :: Word -> HCode (Expr t)
-sysVar cell_num = gRead <$> vm_allocate gsc_vars (VR_System (GCell cell_num))
+sysVar cell_num = gRead <$> vm_allocate gsc_vars (VR_System (FCell cell_num))
 
 -- Declares a system table
 sysTable :: String -> HCode (Expr Int -> Expr t)
-sysTable name = do let table e = GTable (mkTableName name) (eval e)
+sysTable name = do let table e = FTable (mkTableName name) (eval e)
                    return $ gRead . Cell . table
 
 -- HCode instructions
@@ -149,13 +149,13 @@ gIf pred branch = do
   let gp = eval pred
   code <- saving gsc_vars $ local_block branch
   case code of
-    GOps [GGoto lbl] comment -> -- in case we have a simple goto we can put right into the 'if' body
-      gen $ GOps [GIf gp lbl] comment
+    FOps [FGoto lbl] comment -> -- in case we have a simple goto we can put right into the 'if' body
+      gen $ FOps [FIf gp lbl] comment
     large_code -> do
       rest_prog <- freshLabel
       branch_lbl <- freshLabel
-      gen $ GIf gp branch_lbl
-      gen $ GGoto rest_prog
+      gen $ FIf gp branch_lbl
+      gen $ FGoto rest_prog
       genLabel $ branch_lbl
       gen $ code
       genLabel rest_prog
@@ -165,7 +165,7 @@ gIf pred branch = do
 -- emits Assignment
 infixr 1 #=
 (#=) :: Expr a -> Expr a -> HCode ()
-(#=) (Read c) e = gen $ GAssign (unCell c) (eval e)
+(#=) (Read c) e = gen $ FAssign (unCell c) (eval e)
 (#=) _ e = error "Left side of an assignment must be a variable"
 
 gwhile :: Expr W.Bool -> HCode () -> HCode ()
@@ -175,21 +175,21 @@ gwhile cond body = do
   let expr = eval cond
   rest_prog_lbl <- freshLabel
   code <- L.local ce_ext_labels (rest_prog_lbl :) $ L.local ce_gwhile_depth (+1) $ saving gsc_vars $ local_block body
-  gen $ GWhile depth expr code
+  gen $ FWhile depth expr code
   genLabel rest_prog_lbl
   refLabel rest_prog_lbl
 
--- Generates a while loop, implemented using IF and GOTO, cause WHILE badly interacts with goto
+-- Fenerates a while loop, implemented using IF and FOTO, cause WHILE badly interacts with goto
 while :: Expr W.Bool -> HCode () -> HCode ()
 while pred body = do
   let gp = eval (Not pred)
   rest_prog_lbl <- freshLabel
   while_lbl <- freshLabel
   genLabel while_lbl
-  gen $ GIf gp rest_prog_lbl
+  gen $ FIf gp rest_prog_lbl
   code <- L.local ce_ext_labels (rest_prog_lbl :) $ saving gsc_vars $ local_block body
   gen code
-  gen $ GGoto while_lbl
+  gen $ FGoto while_lbl
   genLabel rest_prog_lbl
   refLabel while_lbl
   refLabel rest_prog_lbl
@@ -214,21 +214,21 @@ break_n n | n < 1 = error "break_n should be called with a positive number, whic
             escape_labels <- L.asks ce_ext_labels
             case drop (n-1) escape_labels of
               [] -> error $ "can't break " ++ show n ++ if n>1 then " levels" else " level"
-              (lbl:_) -> gen $ GGoto lbl
+              (lbl:_) -> gen $ FGoto lbl
 
--- Generates a goto operator
+-- Fenerates a goto operator
 goto :: String -> HCode ()
 goto lbl_str = do
   let lbl = mkULabel lbl_str
   refLabel lbl
-  gen $ GGoto lbl
+  gen $ FGoto lbl
 
 -- Creates a label at given point
 label :: String -> HCode ()
 label lbl_str = genLabel $ mkULabel lbl_str
 
-frame :: [GInstruction ()] -> HCode ()
-frame = gen . GFrame
+frame :: [FInstruction ()] -> HCode ()
+frame = gen . FFrame
 
 -- Emits comment
 infix 0 #
@@ -238,7 +238,7 @@ code # comment = do
   acc <- L.gets gsc_acc
   case acc of
     Nothing -> warn "no operator to attach comment to"
-    Just op -> L.puts gsc_acc $ Just $ GOps [op] comment
+    Just op -> L.puts gsc_acc $ Just $ FOps [op] comment
   return r
 
 class CInstruction con where
@@ -259,26 +259,25 @@ class CInstruction con where
   p :: Expr Double -> con ()
   l :: Int -> con ()
 
+instance CInstruction FInstruction where
+  g = FInstrE 'G' . eval
+  m = check_diap 0 200 . FInstrI 'M'
+  t = FInstrE 'T' . eval
+  s = FInstrE 'S' . eval
+  f = FInstrE 'F' . eval
+  d = FInstrE 'D' . eval
+  h = FInstrE 'H' . eval
+  x = FInstrE 'X' . eval
+  y = FInstrE 'Y' . eval
+  z = FInstrE 'Z' . eval
+  i = FInstrE 'I' . eval
+  j = FInstrE 'J' . eval
+  k = FInstrE 'K' . eval
+  r = FInstrE 'R' . eval
+  p = FInstrE 'P' . eval
+  l = FInstrI 'L'
 
-instance CInstruction GInstruction where
-  g = GInstrE 'G' . eval
-  m = check_diap 0 200 . GInstrI 'M'
-  t = GInstrE 'T' . eval
-  s = GInstrE 'S' . eval
-  f = GInstrE 'F' . eval
-  d = GInstrE 'D' . eval
-  h = GInstrE 'H' . eval
-  x = GInstrE 'X' . eval
-  y = GInstrE 'Y' . eval
-  z = GInstrE 'Z' . eval
-  i = GInstrE 'I' . eval
-  j = GInstrE 'J' . eval
-  k = GInstrE 'K' . eval
-  r = GInstrE 'R' . eval
-  p = GInstrE 'P' . eval
-  l = GInstrI 'L'
-
-check_diap a b instr@(GInstrI c k) | k < a && k > b = error $ printf "Code %c must be in diapason %d-%d, but %d given" c a b k
+check_diap a b instr@(FInstrI c k) | k < a && k > b = error $ printf "Code %c must be in diapason %d-%d, but %d given" c a b k
                                    | otherwise = instr
 
 instance CInstruction HCode where
