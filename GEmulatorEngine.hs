@@ -1,6 +1,6 @@
 module GEmulatorEngine where
 
-import GCode
+import FanucMacro
 import Geometry
 import GParser
 

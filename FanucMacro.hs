@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module  GCode where
+module  FanucMacro where
 
 import Geometry(RealT)
 

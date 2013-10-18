@@ -3,7 +3,7 @@ module HCode(module HCode,
              Cell, Expr, gRead, fix, fup, fi) where
 
 import Expr
-import GCode
+import FanucMacro
 import VarMap
 
 import Prelude hiding(break)
@@ -100,7 +100,7 @@ check_labels = do
 -- Generates a code and prints it on stdout
 putHCode :: HCode () -> IO ()
 putHCode hcode = do
-  gen_res <- gcodeGen hcode
+  gen_res <- fanucGen hcode
   case gen_res of
     Nothing -> return ()
     Just (st, gcode) -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (printf "%04d") [10 :: Int, 20 ..])
@@ -108,8 +108,8 @@ putHCode hcode = do
                                label_printer = LabelPrinter { lp_frame = ('N':) . label_renamer, lp_ref = label_renamer}
                            putGOps label_printer gcode
 -- Generates a code and prints errors on stdout
-gcodeGen :: HCode () -> IO (Maybe (GCompileState, GOperator))
-gcodeGen hcode = do
+fanucGen :: HCode () -> IO (Maybe (GCompileState, GOperator))
+fanucGen hcode = do
   let (_, st, (warns, errs, gcode)) = RWS.runRWS (hcode >> genAccumulated >> check_labels) init_ce init_cs
   when (not $ null warns) $ hPutStrLn stderr $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of

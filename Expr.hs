@@ -2,7 +2,7 @@
              FlexibleContexts, UndecidableInstances #-}
 module Expr where
 
-import GCode
+import FanucMacro
 
 import Prelude hiding((&&), (||), not,
                       (==), (>), (<))

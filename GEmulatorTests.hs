@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module GEmulatorTests where
 
-import GCode
+import FanucMacro
 import HCode
 import GEmulatorEngine
 import GParser
@@ -17,7 +17,7 @@ prog1 = do
   frame [g 1, z 10000]
 
 gemulator_tests = do
-  Just (_, gcode) <- gcodeGen prog1
+  Just (_, gcode) <- fanucGen prog1
   putStrLn $ "***** gcode:"
   putHCode prog1
   let iso_code = macroToIso7 gcode

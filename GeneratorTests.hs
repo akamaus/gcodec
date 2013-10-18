@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module GeneratorTests where
 
-import GCode
+import FanucMacro
 import HCode
 
 import AwePrelude
@@ -117,7 +117,7 @@ samples = [ (hcode_prog1, "Example1"),
             (hcode_gwhile, "gwhile with break") ]
 
 generator_tests = do
-  putStrLn "***** GCode example:"
+  putStrLn "***** FanucMacro example:"
   putGOps (LabelPrinter show show) gcode_prog1
 
   mapM_ gen_sample samples

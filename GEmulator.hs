@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import GCode
+import FanucMacro
 import HCode
 import GEmulatorEngine
 import GParser

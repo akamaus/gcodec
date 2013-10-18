@@ -2,7 +2,7 @@
 module VarMap(VarMap, empty_vm,
               VarRequest(..), vm_allocate) where
 
-import GCode(GCell(..))
+import FanucMacro(GCell(..))
 import Expr(Symbol, Cell(..))
 
 import Prelude hiding ((.), id)
