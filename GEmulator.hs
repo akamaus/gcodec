@@ -3,7 +3,7 @@ module Main where
 
 import FanucMacro
 import HCode
-import GEmulatorEngine
+import GInterpreter
 import GParser
 
 import AwePrelude

@@ -1,4 +1,4 @@
-module GParser(Iso7Program(..), Instr(..), IFrame(..), parseIsoFile) where
+module GParser(GProgram(..), Instr(..), IFrame(..), parseIsoFile) where
 
 import Geometry(RealT)
 
@@ -13,7 +13,7 @@ import Data.Maybe
 data Instr = InstrI Char Int | InstrF Char RealT deriving Show
 newtype IFrame = IFrame [Instr] deriving Show
 
-data Iso7Program = Iso7Program {ipName :: String, ipCode :: [IFrame]} deriving Show
+data GProgram = GProgram {ipName :: String, ipCode :: [IFrame]} deriving Show
 
 instrP = do
   c <- toUpper <$> letter
@@ -38,7 +38,7 @@ iso7 = do
   char '%'
   skipComment
   endOfInput
-  return $ Iso7Program {ipName = prog, ipCode = fs}
+  return $ GProgram {ipName = prog, ipCode = fs}
 
 skipComment = do
   skipHorSpace

@@ -1,9 +1,9 @@
 module Tests(main) where
 
 import GeneratorTests hiding(main)
-import GEmulatorTests
+import InterpreterTests
 
 main = do
   generator_tests
-  gemulator_tests
+  interpreter_tests
 
