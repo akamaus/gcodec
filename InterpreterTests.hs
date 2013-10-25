@@ -5,7 +5,7 @@ import FanucMacro
 import HCode
 import FInterpreter
 import GInterpreter
-import GParser
+import GTypes
 
 import AwePrelude
 --import Prelude(Num(..), Fractional(..), Floating(..), Int, ($), id, putStrLn, (++), Just)

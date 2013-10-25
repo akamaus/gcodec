@@ -1,6 +1,6 @@
-module GParser(GProgram(..), Instr(..), IFrame(..), parseIsoFile) where
+module GParser(module GTypes, parseIsoFile) where
 
-import Geometry(RealT)
+import GTypes
 
 import Data.Attoparsec.Text
 import qualified Data.Text as T
@@ -10,19 +10,14 @@ import Data.Char
 import Control.Applicative
 import Data.Maybe
 
-data Instr = InstrI Char Int | InstrF Char RealT deriving Show
-newtype IFrame = IFrame [Instr] deriving Show
-
-data GProgram = GProgram {ipName :: String, ipCode :: [IFrame]} deriving Show
-
 instrP = do
   c <- toUpper <$> letter
   val <- iso_double
   return $ case elem c "GMNT" of
-    True -> InstrI c (round val)
-    _   -> InstrF c (realToFrac val)
+    True -> GInstrI c (round val)
+    _   -> GInstrF c (realToFrac val)
 
-frameP = IFrame <$> many1 instrP
+frameP = GFrame <$> many1 instrP
 
 frames = many $ do f <- frameP
                    skipComment

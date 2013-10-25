@@ -1,21 +1,22 @@
 module FInterpreter where
 
 import FanucMacro
-import GParser
+import Geometry
+import GTypes
 
 import Text.Printf
 
 macroToGCode :: FOperator -> GProgram
 macroToGCode op = GProgram {ipName = "UNKNOWN", ipCode = interpretMacro' op}
   where
-    interpretMacro' :: FOperator -> [IFrame]
+    interpretMacro' :: FOperator -> [GFrame]
     interpretMacro' prog = case prog of
       FOps ops _ -> concatMap interpretMacro' ops
-      FFrame codes -> [IFrame $ map interpretInstr codes]
+      FFrame codes -> [GFrame $ map interpretInstr codes]
       x -> error $ "can't interpter operator " ++ show x
     interpretInstr instr = case instr of
-      FInstrE c (F_Real f) -> InstrF c f
-      FInstrE c (F_Int i)   -> InstrI c i
+      FInstrE c (F_Real f) -> GInstrF c f
+      FInstrE c (F_Int i)   -> GInstrI c i
       x -> error $ "can't interpret instruction " ++ show x
 
 get_float (F_Real f) = f

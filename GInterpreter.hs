@@ -53,25 +53,25 @@ gcodeToMoves (GProgram name frames) = do
   tool_ref <- newIORef $ Tool 0
   tool_changer_ref <- newIORef $ Tool 0
   let -- processes entire frame, returns Move together with instructions what to do next
-      run_frame (IFrame codes) = do moves <- proc_frame codes (return ())
+      run_frame (GFrame codes) = do moves <- proc_frame codes (return ())
                                     mop <- readIORef op_type_ref
                                     op_effs <- proc_operation
                                     move_effs <- read_effect moves
                                     return $ op_effs ++ move_effs
       -- Accumulates effects of a frame
       proc_frame [] act = return act
-      proc_frame (InstrF axe val : rest) act | axe == 'X' = proc_move x_ref val rest act
+      proc_frame (GInstrF axe val : rest) act | axe == 'X' = proc_move x_ref val rest act
                                              | axe == 'Y' = proc_move y_ref val rest act
                                              | axe == 'Z' = proc_move z_ref val rest act
                                              | axe == 'I' = proc_geom_setting i_ref val rest act
                                              | axe == 'J' = proc_geom_setting j_ref val rest act
                                              | axe == 'K' = proc_geom_setting k_ref val rest act
                                              | axe == 'R' = proc_geom_setting r_ref val rest act
-      proc_frame (InstrF 'F' val : rest) act = writeIORef feed_ref val >> proc_frame rest act
-      proc_frame (InstrI 'T' val : rest) act = writeIORef tool_changer_ref (Tool val) >> proc_frame rest act
-      proc_frame (InstrI 'G' val : rest) act = proc_gcode val rest act
-      proc_frame (InstrI 'M' val : rest) act = proc_mcode val rest act
-      proc_frame (InstrI 'N' _ : rest) act = proc_frame rest act
+      proc_frame (GInstrF 'F' val : rest) act = writeIORef feed_ref val >> proc_frame rest act
+      proc_frame (GInstrI 'T' val : rest) act = writeIORef tool_changer_ref (Tool val) >> proc_frame rest act
+      proc_frame (GInstrI 'G' val : rest) act = proc_gcode val rest act
+      proc_frame (GInstrI 'M' val : rest) act = proc_mcode val rest act
+      proc_frame (GInstrI 'N' _ : rest) act = proc_frame rest act
       proc_frame (instr:rest) act = do warn $ "skipping instruction " ++ show instr
                                        proc_frame rest act
       -- Stores encountered G instruction
@@ -95,12 +95,12 @@ gcodeToMoves (GProgram name frames) = do
                         proc_frame rest act
           Just mcode -> fail $ "got second Mcode in single frame in addition to " ++ show mcode
       -- Stores instruction specifying target coordinates, like X Y Z
-      proc_move :: IORef RealT -> RealT -> [Instr] -> IO () -> IO (IO ())
+      proc_move :: IORef RealT -> RealT -> [GInstr] -> IO () -> IO (IO ())
       proc_move axe val rest act = proc_frame rest $ do
         act
         writeIORef axe val
       -- Stores instruction specifying target coordinates, like X Y Z
-      proc_geom_setting :: IORef (Maybe RealT) -> RealT -> [Instr] -> IO () -> IO (IO ())
+      proc_geom_setting :: IORef (Maybe RealT) -> RealT -> [GInstr] -> IO () -> IO (IO ())
       proc_geom_setting axe val rest act = do
         val0 <- readIORef axe
         case val0 of
