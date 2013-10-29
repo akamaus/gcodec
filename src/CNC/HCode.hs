@@ -240,6 +240,7 @@ comment cmt = gen $ FOps [FVoid] (Comment cmt)
 
 class CInstruction con where
   g :: Expr Int -> con ()
+  g_double :: Expr Double -> con ()
   m :: Int -> con ()
   t :: Expr Int -> con ()
   s :: Expr Double -> con ()
@@ -253,11 +254,13 @@ class CInstruction con where
   j :: Expr Double -> con ()
   k :: Expr Double -> con ()
   r :: Expr Double -> con ()
-  p :: Expr Double -> con ()
+  p :: Expr Int -> con ()
+  p_double :: Expr Double -> con ()
   l :: Int -> con ()
 
 instance CInstruction FInstruction where
   g = FInstrE 'G' . eval
+  g_double = FInstrE 'G' . eval
   m = check_diap 0 200 . FInstrI 'M'
   t = FInstrE 'T' . eval
   s = FInstrE 'S' . eval
