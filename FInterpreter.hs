@@ -4,7 +4,26 @@ import FanucMacro
 import Geometry
 import GTypes
 
+import Control.Monad.Reader
+import Control.Monad.Writer
+import Data.Array.IO
 import Text.Printf
+
+type FBank = IOArray Int FVar
+data FVar = V_Int Int | V_Real RealT
+
+type FInterpreter = ReaderT FBank (WriterT [GFrame] IO)
+
+interpretFCode (FOps ops) comment = do
+  unless (null comment) $ tell $ GComment comment
+  mapM_ interpretFCode ops
+
+interpretFCode (FLabel lbl) = error "labels unimpl"
+
+interpretFCode (FAssign cell expr) = do
+  let ind = cellToInd cell
+  val <- interpretFExpr expr
+  set_bank ind val
 
 macroToGCode :: FOperator -> GProgram
 macroToGCode op = GProgram {ipName = "UNKNOWN", ipCode = interpretMacro' op}

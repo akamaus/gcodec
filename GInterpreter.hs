@@ -58,6 +58,7 @@ gcodeToMoves (GProgram name frames) = do
                                     op_effs <- proc_operation
                                     move_effs <- read_effect moves
                                     return $ op_effs ++ move_effs
+      run_frame (GComment _) = return []
       -- Accumulates effects of a frame
       proc_frame [] act = return act
       proc_frame (GInstrF axe val : rest) act | axe == 'X' = proc_move x_ref val rest act
