@@ -18,13 +18,13 @@ prog1 = do
   frame [g 1, z 10000]
 
 interpreter_tests = do
-  Just (_, gcode) <- fanucGen prog1
-  putStrLn $ "***** gcode:"
+  Just (_, fcode) <- fanucGen prog1
+  putStrLn $ "***** fcode:"
   putHCode prog1
-  let gcode_code = macroToGCode gcode
+  gcode <- macroToGCode fcode
   putStrLn "*** iso code:"
-  print gcode_code
-  gtrace <- gcodeToMoves gcode_code
+  print gcode
+  gtrace <- gcodeToMoves gcode
   mapM_ print gtrace
   print $ gcode_stats gtrace
   -- gtrace  <- iso7ToMoves iso_code

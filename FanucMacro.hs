@@ -14,6 +14,7 @@ import Text.Printf
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy.Char8 as LS
 
+type FProgram = FOperator
 -- AST for program in ISO7
 data FOperator = FOps [FOperator] Comment | FLabel Label | FAssign FCell FExpr
                | FIf FExpr Label | FWhile Int FExpr FOperator | FGoto Label

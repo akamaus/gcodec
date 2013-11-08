@@ -33,7 +33,7 @@ iso7 = do
   char '%'
   skipComment
   endOfInput
-  return $ GProgram {ipName = prog, ipCode = fs}
+  return $ GProgram {gpName = prog, gpCode = fs}
 
 skipComment = do
   skipHorSpace
