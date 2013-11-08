@@ -109,7 +109,7 @@ hcode_gwhile = do
     y $ fi k
   m 30
 
-samples = [ (hcode_prog1, "Example1"),
+hcode_samples = [ (hcode_prog1, "Example1"),
             (hcode_prog2, "Example2"),
             (hcode_if_loops, "if_loops - test for compound operators in if branches"),
             (hcode_for, "for loop"),
@@ -120,7 +120,7 @@ generator_tests = do
   putStrLn "***** FanucMacro example:"
   putFOps (LabelPrinter show show) fcode_prog1
 
-  mapM_ gen_sample samples
+  mapM_ gen_sample hcode_samples
 
  where gen_sample (hcode, descr) = do
          putStrLn $ "***** " ++ descr ++ ":"

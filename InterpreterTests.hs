@@ -21,12 +21,9 @@ interpreter_tests = do
   Just (_, fcode) <- fanucGen prog1
   putStrLn $ "***** fcode:"
   putHCode prog1
-  gcode <- macroToGCode fcode
+  gcode <- fcodeToGCode fcode
   putStrLn "*** iso code:"
   print gcode
   gtrace <- gcodeToMoves gcode
   mapM_ print gtrace
   print $ gcode_stats gtrace
-  -- gtrace  <- iso7ToMoves iso_code
-  -- print "****parsed iso7"
-  -- evaluateIsoFile "examples/O192"

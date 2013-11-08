@@ -97,25 +97,32 @@ check_labels = do
   mapM_ (\lbl -> warn $ printf "Unused label: %s" (show lbl)) (S.toList unused_lbls)
   mapM_ (\lbl -> err $ printf "unknown label: %s" (show lbl)) (S.toList unknown_lbls)
 
--- Fenerates a code and prints it on stdout
+-- Generates a code and prints it on stdout
 putHCode :: HCode () -> IO ()
 putHCode hcode = do
   gen_res <- fanucGen hcode
   case gen_res of
     Nothing -> return ()
-    Just (st, gcode) -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (printf "%04d") [10 :: Int, 20 ..])
+    Just (st, fcode) -> do let label_list = zip (reverse $ get gsc_gen_labels st) (map (printf "%04d") [10 :: Int, 20 ..])
                                label_renamer n = fromMaybe (error "PANIC: label renamer can't find a label") $ lookup n label_list
                                label_printer = LabelPrinter { lp_frame = ('N':) . label_renamer, lp_ref = label_renamer}
-                           putFOps label_printer gcode
--- Fenerates a code and prints errors on stdout
+                           putFOps label_printer fcode
+-- Generates a code and prints errors on stdout
 fanucGen :: HCode () -> IO (Maybe (FCompileState, FOperator))
 fanucGen hcode = do
-  let (_, st, (warns, errs, gcode)) = RWS.runRWS (hcode >> genAccumulated >> check_labels) init_ce init_cs
+  let (_, st, (warns, errs, fcode)) = RWS.runRWS (hcode >> genAccumulated >> check_labels) init_ce init_cs
   when (not $ null warns) $ hPutStrLn stderr $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
     True -> do hPutStrLn stderr $ printf "Errors:\n%s\n" $ unlines errs
                return Nothing
-    False -> return $ Just (st, gcode)
+    False -> return $ Just (st, fcode)
+
+-- A convenient wrapper, transforms HCode to FCode, fails on errors
+hcodeToFCode hcode = do
+  gen_res <- fanucGen hcode
+  case gen_res of
+    Nothing -> error "errors detected while compiling"
+    Just (st, fcode) -> return fcode
 
 -- *****************
 --  EDSL primitives
