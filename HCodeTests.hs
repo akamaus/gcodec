@@ -77,6 +77,7 @@ hcode_if_loops :: HCode ()
 hcode_if_loops = do
   mx <- newVar 10 # "max x"
   my <- newVar 20 # "max y"
+  comment "center"
   cx <- newVar 1 # "cur x"
   cy <- newVar 1 # "cur y"
   label "x-loop"
@@ -101,20 +102,23 @@ hcode_for = do
   tst <- newVar (42 :: Int)
   m 30
 
-hcode_gwhile = do
+hcode_gwhile_break = do
   k <- newVar (1 :: Int)
+  comment "loop starts"
   gwhile (k < 100) $ do
-    x $ fi k
-    gIf (k > 10) $ break
-    y $ fi k
+    inner_loop k # "inner loop comment"
   m 30
+ where inner_loop k = do
+         x $ fi k
+         gIf (k > 10) $ break
+         y $ fi k
 
 hcode_samples = [ (hcode_prog1, "Example1"),
             (hcode_prog2, "Example2"),
             (hcode_if_loops, "if_loops - test for compound operators in if branches"),
             (hcode_for, "for loop"),
             (hcode_poligon, "Poligon drawer"),
-            (hcode_gwhile, "gwhile with break") ]
+            (hcode_gwhile_break, "gwhile with break") ]
 
 generator_tests = do
   putStrLn "***** FanucMacro example:"

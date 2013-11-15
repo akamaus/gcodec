@@ -30,12 +30,12 @@ runFIntereter :: FProgram -> IO [GLine]
 runFIntereter fprog = do bank <- initBank
                          execWriterT $ runReaderT (interpretFCode fprog) bank
 
-macroToGCode :: FProgram -> IO GProgram
-macroToGCode fprog = do gcode <- runFIntereter fprog
+fcodeToGCode :: FProgram -> IO GProgram
+fcodeToGCode fprog = do gcode <- runFIntereter fprog
                         return $ GProgram { gpName = "Interpreted from HCode", gpCode = gcode }
 
 interpretFCode :: FOperator -> FInterpreter ()
-interpretFCode (FOps ops comment) = do
+interpretFCode (FOps ops (Comment comment)) = do
   unless (null comment) $ tell $ [GComment comment]
   mapM_ interpretFCode ops
 

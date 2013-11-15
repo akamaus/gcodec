@@ -31,8 +31,7 @@ data FCompileState = FCS {
   _gsc_vars :: VarMap, -- mapping from symbolic variables to numeric memory cells
   _gsc_ref_labels :: S.Set Label, -- labels referenced from generated code
   _gsc_gen_labels :: [Label],  -- already generated labels
-  _gsc_fresh_label :: Label,
-  _gsc_acc :: Maybe FOperator  -- operator currently being assembled
+  _gsc_fresh_label :: Label
   } deriving Show
 
 data CompileEnv = CompileEnv { _ce_ext_labels :: [Label], _ce_gwhile_depth :: Int }
@@ -42,21 +41,10 @@ mkLabels [''CompileEnv, ''FCompileState]
 -- Helpers for generating warnings, errors and code
 warn w = RWS.tell ([w],        RWS.mempty, RWS.mempty)
 err e =  RWS.tell (RWS.mempty, [e],        RWS.mempty)
-gen op = do genAccumulated
-            L.puts gsc_acc (Just op)
-
--- Freezing accumulated operator
-genAccumulated :: HCode ()
-genAccumulated = do
-  acc <- L.gets gsc_acc
-  case acc of
-    Nothing -> return ()
-    Just op -> RWS.tell (RWS.mempty, RWS.mempty, op)
-  L.puts gsc_acc Nothing
-
+gen op = RWS.tell (RWS.mempty, RWS.mempty, op)
 
 -- Init compiler state
-init_cs = FCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [], _gsc_fresh_label = AutoLabel 1, _gsc_acc = Nothing }
+init_cs = FCS { _gsc_vars = empty_vm, _gsc_ref_labels = S.empty, _gsc_gen_labels = [], _gsc_fresh_label = AutoLabel 1 }
 init_ce = CompileEnv { _ce_ext_labels = [], _ce_gwhile_depth = 1 }
 
 -- Runs a computation storing a given projection of state
@@ -66,10 +54,12 @@ saving l m = do
   L.puts l st
   return res
 
--- Fenerates a code block and returns it
+-- Generates a code and returns it as second element of a tuple. The first one being result of the original monadic action
+censorCode :: HCode a -> HCode (a, FOperator)
+censorCode = RWS.censor (\(w,e,c) -> (w,e,RWS.mempty)) . RWS.listens (\(_,_,c) -> c)
+-- Generates a code block and returns it
 local_block :: HCode () -> HCode FOperator
-local_block block = do genAccumulated
-                       liftM snd . RWS.censor (\(w,e,c) -> (w,e,RWS.mempty)) . RWS.listens (\(_,_,c) -> c) $ block >> genAccumulated
+local_block = liftM snd . censorCode
 
 freshLabel :: HCode Label
 freshLabel = L.modifyAndGet (gsc_fresh_label) $ \fl@(AutoLabel k) -> (fl, AutoLabel $ k + 1)
@@ -110,7 +100,7 @@ putHCode hcode = do
 -- Generates a code and prints errors on stdout
 fanucGen :: HCode () -> IO (Maybe (FCompileState, FOperator))
 fanucGen hcode = do
-  let (_, st, (warns, errs, fcode)) = RWS.runRWS (hcode >> genAccumulated >> check_labels) init_ce init_cs
+  let (_, st, (warns, errs, fcode)) = RWS.runRWS (hcode >> check_labels) init_ce init_cs
   when (not $ null warns) $ hPutStrLn stderr $ printf "Warnings:\n%s\n" $ unlines warns
   case (not $ null errs) of
     True -> do hPutStrLn stderr $ printf "Errors:\n%s\n" $ unlines errs
@@ -237,16 +227,16 @@ label lbl_str = genLabel $ mkULabel lbl_str
 frame :: [FInstruction ()] -> HCode ()
 frame = gen . FFrame
 
--- Emits comment
+-- Emits inline comment
 infix 0 #
 (#) :: HCode a -> String -> HCode a
-code # comment = do
-  r <- code
-  acc <- L.gets gsc_acc
-  case acc of
-    Nothing -> warn "no operator to attach comment to"
-    Just op -> L.puts gsc_acc $ Just $ FOps [op] comment
+code # inline_comment = do
+  (r, op) <- censorCode code
+  gen $ FOps [op] (Comment inline_comment)
   return r
+
+comment :: String -> HCode ()
+comment cmt = gen $ FOps [FVoid] (Comment cmt)
 
 class CInstruction con where
   g :: Expr Int -> con ()
