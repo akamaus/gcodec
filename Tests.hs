@@ -1,6 +1,6 @@
 module Tests(main) where
 
-import GeneratorTests hiding(main)
+import HCodeTests hiding(main)
 import InterpreterTests
 
 main = do

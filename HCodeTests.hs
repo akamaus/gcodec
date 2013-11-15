@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module GeneratorTests where
+module HCodeTests where
 
 import FanucMacro
 import HCode
