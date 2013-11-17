@@ -82,7 +82,7 @@ fopGen (FLabel label) c = do trans <- asks lp_frame
 fopGen (FIf cond branch_lbl) c = do goto_branch <- fopGen (FGoto branch_lbl) c
                                     return $ bs "IF " <> fexprGen cond <> bs " THEN " <> goto_branch
 fopGen (FWhile k cond body) c = do code <- fopGen body ""
-                                   return $ bs "WHILE " <> fexprGen cond <> bs " DO" <> fromShow k <> cmt c <> endl
+                                   return $ bs "WHILE " <> bracket (fexprGen cond) <> bs " DO" <> fromShow k <> cmt c <> endl
                                      <> code
                                      <> bs "END" <> fromShow k <> endl
 fopGen (FFrame codes) c = return $ mconcat (intersperse (fromChar ' ') $ map finstrGen codes) <> cmt c <> endl
