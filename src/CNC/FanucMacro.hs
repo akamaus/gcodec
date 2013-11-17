@@ -101,7 +101,7 @@ fexprGen (F_Or e1 e2) =  bracket $ fexprGen e1 <> bs " OR "  <> fexprGen e2
 fexprGen (F_Xor e1 e2) = error "buggy on cnc" -- bracket $ fexprGen e1 <> bs " XOR " <> fexprGen e2
 fexprGen (F_Read cell) = fcellGen cell
 fexprGen (F_Int i) = fromShow i
-fexprGen (F_Real i) = fromShow i
+fexprGen (F_Real i) = str $ printf "%f" i
 
 finstrGen (FInstrI c k) = fromChar c <> fromShow k
 finstrGen (FInstrE c e) = fromChar c <> fexprGen e
