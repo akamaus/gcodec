@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                gcodec
-version:             0.5
+version:             0.5.1
 synopsis:            A Haskell DSL for writing Fanuc Macro programs
 homepage:            https://github.com/akamaus/gcodec
 license:             BSD3
@@ -49,7 +49,7 @@ executable GEmulator
                      blaze-builder >= 0.3,
                      bytestring >= 0.10,
                      containers > 0.5,
-                     fclabels >= 1,
+                     fclabels >= 1 && < 2,
                      mtl >= 2,
                      text >= 0.11
 

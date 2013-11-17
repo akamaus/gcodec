@@ -1,6 +1,5 @@
 {-# LANGUAGE GADTs, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
-module CNC.HCode(module CNC.HCode, module W,
-                 Num(..), Fractional(..), Floating(..), Int,
+module CNC.HCode(module CNC.HCode,
                  Cell, Expr, gRead, fix, fup, fi) where
 
 import CNC.Expr
