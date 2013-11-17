@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import FanucMacro
-import HCode
-import GInterpreter
-import GParser
+import CNC.FanucMacro
+import CNC.HCode
+import CNC.GInterpreter
+import CNC.GParser
 
-import AwePrelude
+import CNC.AwePrelude
 --import Prelude(Num(..), Fractional(..), Floating(..), Int, ($), id, putStrLn, (++), Just)
 import System.Environment
 
@@ -16,8 +16,8 @@ evaluateIsoFile file = do
 --  print parsed
   case parsed of
     Right iso -> do
-      prog_trace <- iso7ToMoves iso
-      return $ iso7stats prog_trace
+      prog_trace <- gcodeToMoves iso
+      return $ gcode_stats prog_trace
     Left err -> do putStrLn $ "Error parsing: " ++ show err
                    fail err
 

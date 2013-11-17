@@ -3,11 +3,11 @@
 --Taken from AwesomePrelude
 --https://github.com/tomlokhorst/AwesomePrelude/blob/master/src/Generic/Data/Ord.hs
 
-module AwePrelude.Ord where
+module CNC.AwePrelude.Ord where
 
 import Prelude ()
-import AwePrelude.Bool
-import AwePrelude.Eq
+import CNC.AwePrelude.Bool
+import CNC.AwePrelude.Eq
 
 infix 4 <, <=, >=, >
 

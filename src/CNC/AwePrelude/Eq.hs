@@ -3,10 +3,10 @@
 --Taken from AwesomePrelude
 --https://github.com/tomlokhorst/AwesomePrelude/blob/master/src/Generic/Data/Eq.hs
 
-module AwePrelude.Eq where
+module CNC.AwePrelude.Eq where
 
 import Prelude ()
-import AwePrelude.Bool
+import CNC.AwePrelude.Bool
 
 infix 4 ==, /=
 

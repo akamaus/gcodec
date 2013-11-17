@@ -3,7 +3,7 @@
 --Taken from AwesomePrelude
 --https://github.com/tomlokhorst/AwesomePrelude/blob/master/src/Generic/Data/Bool.hs
 
-module AwePrelude.Bool where
+module CNC.AwePrelude.Bool where
 
 import Prelude ()
 

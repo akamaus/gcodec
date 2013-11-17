@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
-module InterpreterTests where
+module CNC.InterpreterTests where
 
-import FanucMacro
-import HCode
-import FInterpreter
-import GInterpreter
-import GTypes
+import CNC.FanucMacro
+import CNC.HCode
+import CNC.FInterpreter
+import CNC.GInterpreter
+import CNC.GTypes
 
-import AwePrelude
+import CNC.AwePrelude
 --import Prelude(Num(..), Fractional(..), Floating(..), Int, ($), id, putStrLn, (++), Just)
 
 prog1 = do

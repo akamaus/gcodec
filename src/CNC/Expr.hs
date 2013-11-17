@@ -1,13 +1,13 @@
 {-# LANGUAGE GADTs, FlexibleInstances, MultiParamTypeClasses,
              FlexibleContexts, UndecidableInstances #-}
-module Expr where
+module CNC.Expr where
 
-import FanucMacro
+import CNC.FanucMacro
 
 import Prelude hiding((&&), (||), not,
                       (==), (>), (<))
 
-import qualified AwePrelude as W
+import qualified CNC.AwePrelude as W
 
 import qualified Data.ByteString as S
 import Data.Word

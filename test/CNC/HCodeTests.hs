@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
-module HCodeTests where
+module CNC.HCodeTests where
 
-import FanucMacro
-import HCode
+import CNC.FanucMacro
+import CNC.HCode
 
-import AwePrelude
+import CNC.AwePrelude
 import Prelude(Num(..), Fractional(..), Floating(..), Int, ($), id, putStrLn, (++), show)
 import Control.Monad(mapM_)
 

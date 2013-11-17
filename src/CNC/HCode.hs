@@ -1,13 +1,14 @@
 {-# LANGUAGE GADTs, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
-module HCode(module HCode,
-             Cell, Expr, gRead, fix, fup, fi) where
+module CNC.HCode(module CNC.HCode, module W,
+                 Num(..), Fractional(..), Floating(..), Int,
+                 Cell, Expr, gRead, fix, fup, fi) where
 
-import Expr
-import FanucMacro
-import VarMap
+import CNC.Expr
+import CNC.FanucMacro
+import CNC.VarMap
 
 import Prelude hiding(break)
-import qualified AwePrelude as W
+import qualified CNC.AwePrelude as W
 
 import Control.Applicative
 import Control.Monad

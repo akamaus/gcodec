@@ -1,8 +1,8 @@
-module GInterpreter where
+module CNC.GInterpreter where
 
-import FanucMacro
-import Geometry
-import GParser
+import CNC.FanucMacro
+import CNC.Geometry
+import CNC.GParser
 
 import Control.Monad.Writer
 import Control.Monad.Trans

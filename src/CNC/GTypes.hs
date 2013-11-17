@@ -1,6 +1,6 @@
-module GTypes where
+module CNC.GTypes where
 
-import Geometry(RealT)
+import CNC.Geometry(RealT)
 
 data GInstr = GInstrI Char Int | GInstrF Char RealT deriving Show
 data GLine = GFrame [GInstr] | GComment String deriving Show

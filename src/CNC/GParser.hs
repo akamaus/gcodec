@@ -1,6 +1,6 @@
-module GParser(module GTypes, parseIsoFile) where
+module CNC.GParser(module CNC.GTypes, parseIsoFile) where
 
-import GTypes
+import CNC.GTypes
 
 import Data.Attoparsec.Text
 import qualified Data.Text as T

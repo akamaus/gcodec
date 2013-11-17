@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
-module  FanucMacro where
+module  CNC.FanucMacro where
 
-import Geometry(RealT)
+import CNC.Geometry(RealT)
 
 import Blaze.ByteString.Builder
 import Blaze.ByteString.Builder.Char.Utf8(fromChar, fromShow)
@@ -111,7 +111,7 @@ fcellGen (FTable t e) = fromChar '#' <> bs t <> bracket (fexprGen e)
 
 -- helpers
 bracket s = bs "[ " <> s <> bs " ]"
-commentPrepend str "" = ""
+commentPrepend str (Comment "") = ""
 commentPrepend str (Comment cmt) = Comment $ str ++ cmt
 -- conversion from basic types to builder
 bs = fromByteString

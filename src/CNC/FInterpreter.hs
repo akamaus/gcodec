@@ -1,8 +1,8 @@
-module FInterpreter where
+module CNC.FInterpreter where
 
-import FanucMacro
-import Geometry
-import GTypes
+import CNC.FanucMacro
+import CNC.Geometry
+import CNC.GTypes
 
 import Control.Monad.Reader
 import Control.Monad.Writer

@@ -1,9 +1,9 @@
 {-# LANGUAGE TemplateHaskell, TypeOperators #-}
-module VarMap(VarMap, empty_vm,
+module CNC.VarMap(VarMap, empty_vm,
               VarRequest(..), vm_allocate) where
 
-import FanucMacro(FCell(..))
-import Expr(Symbol, Cell(..))
+import CNC.FanucMacro(FCell(..))
+import CNC.Expr(Symbol, Cell(..))
 
 import Prelude hiding ((.), id)
 
