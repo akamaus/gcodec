@@ -1,14 +1,18 @@
 {-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving #-}
 module Declarative where
 
-import CNC.Geometry(RealT)
+import CNC.Geometry(RealT, eps)
 
 
 import qualified Data.Map as M
+import Data.Map((!))
+import Data.Maybe(fromJust, isNothing)
 import Data.Label
+import Data.List(deleteBy,sort)
 import qualified Data.Label.PureM as LM
 import qualified Control.Monad.State as S
 import Data.Complex
+import Text.Printf
 
 newtype PointInd = PointInd Int deriving (Eq, Ord, Enum, Show)
 type Pos = Complex RealT
@@ -18,13 +22,20 @@ data Figure = Figure { _fPoints ::  M.Map PointInd (Maybe Pos), _fNextPoint :: P
 mkPos x y = x :+ y
 
 zero_ind = PointInd 0
+zero_point = mkPos 0 0
+
 empty_figure = Figure M.empty zero_ind []
 figNumPoints fig = case _fNextPoint fig of
   PointInd k -> k
 
-data Constraint = Disp PointInd PointInd Pos -- A vector from first point to second
-                | Length PointInd PointInd RealT -- distance between points
-                | Angle PointInd PointInd RealT deriving (Eq, Ord, Show)
+instance Ord a => Ord (Complex a) where
+  compare x y = let c1 = compare (realPart x) (realPart y)
+                in if c1 == EQ then compare (imagPart x) (imagPart y)
+                   else c1
+
+data Constraint = Disp {cPoint1 :: PointInd, cPoint2 :: PointInd, cPos :: Pos} -- A vector from first point to second
+                | Length {cPoint1 :: PointInd, cPoint2 :: PointInd, cLen :: RealT} -- distance between points
+                | Angle {cPoint1 :: PointInd, cPoint2 :: PointInd, cAngle :: RealT} deriving (Eq, Ord, Show)
 
 mkLabels [''Figure]
 
@@ -46,12 +57,12 @@ yAngle p1 p2 a = LM.modify fConstraints (Angle p1 p2 (pi/2 - a) :) -- angle betw
 -- solves system consisting of N declared points and user specified constraints
 solveFigure :: Figure -> [Pos]
 solveFigure fig | figNumPoints fig == 0 = error "can't solve figure"
-                | otherwise = let points = M.insert zeroInd (Just zeroPoint) $ get fPoints fig
+                | otherwise = let points = M.insert zero_ind (Just zero_point) $ get fPoints fig
                                   constraints = sort $ get fConstraints fig
                                   solution = solveConstraints points constraints
                               in checkSolution solution constraints
 
-solveConstraints :: Map PointInd Pos -> [Constraint] -> [Constraint] -> Bool -> [Pos]
+solveConstraints :: M.Map PointInd Pos -> [Constraint] -> [Constraint] -> Bool -> [Pos]
 solveConstraints points [] [] _ = points -- no more constraints, finish here
 solveConstraints points [] prev_cs True = solveConstraints points (reverse prev_cs) False -- iterating over constraints again
 solveConstraints points [] prev_cs False = checkSolution points prev_cs -- no constraints was applied, finishing
@@ -75,7 +86,7 @@ solveConstraints points (c:cs) prev_cs shrinked = case c of -- process a single 
     solveDisp p ind d = solveConstraints (M.insert pi points, Just $ p + d) cs prev_cs True
     solveLength p ind ind0 d a_mult = case findAngleConstr ind0 ind of
       Nothing -> skipConstr
-      Just angle) = solveConstraints (M.insert ind points, Just $ p + mkPolar len angle * a_mult) (deleteAngleConstr ind0 ind cs) prev_cs True
+      Just angle -> solveConstraints (M.insert ind points, Just $ p + mkPolar len angle * a_mult) (deleteAngleConstr ind0 ind cs) prev_cs True
 
 checkSolution points constrs | any isNothing $ M.elems points = error "couldn't find a complete solution, got " ++ show M.elems points
 checkSolution points cs = let ps = M.map fromJust points
@@ -83,17 +94,20 @@ checkSolution points cs = let ps = M.map fromJust points
 
 checkConstrs points = M.elems points
 checkConstrs points (c:cs) = case c of
-  Disp ind1 ind2 d =   check $ abs $ points ! ind2 - points ! ind1  - d
-  Length ind1 ind2 l = check $ abs  (points ! ind2 - points ! ind1) - l
-  Angle ind1 ind2 a  = check (phase (points ! ind2 - points ! ind1) - a)
- where check x = if abs x < eps then checkConstrs points cs else error $ printf "error checking constraint %s on points %d %d placed at %s %s"
-                                                                                (show c) ind1 ind2 (show $ points ! ind1) (show $ points ! ind2)
+  Disp ind1 ind2 d ->  check $ abs $ points ! ind2 - points ! ind1  - d
+  Length ind1 ind2 l -> check $ abs  (points ! ind2 - points ! ind1) - l
+  Angle ind1 ind2 a 0 -> check (phase (points ! ind2 - points ! ind1) - a)
+ where p1 = cPoint1 c
+       p2 = cPoint2 c
+       check x = if abs x < eps then checkConstrs points cs
+                 else error $ printf "error checking constraint %s on points %d %d placed at %s %s"
+                      (show c) p1 p2 (show $ points ! p1) (show $ points ! p2)
 
 -- finds first angle constraint on points with speified indices
 findAngleConstr _ _ [] = Nothing
 findAngleConstr ind1 ind2 (c:cs) = case c of
   Angle i1 i2 a | i1 == ind1 && i2 == ind2 -> Just a
-                | i1 = ind2 && i2 == ind1 -> Just (-a)
+                | i1 == ind2 && i2 == ind1 -> Just (-a)
   _ -> findAngleConstr ind1 ind2 cs
 
 -- deletes first angle constraint
