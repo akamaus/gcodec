@@ -3,6 +3,7 @@
 module CNC.Expr where
 
 import CNC.FanucMacro
+import CNC.Geometry(RealT)
 
 import Prelude hiding((&&), (||), not,
                       (==), (>), (<))
@@ -33,7 +34,7 @@ instance RealFrac t => ToExpr t where
 instance ToExpr Int where
   toExpr = IntE
 
-instance ToExpr Double where
+instance ToExpr RealT where
   toExpr = RealE
 
 data Expr t where
@@ -98,7 +99,7 @@ fix = Cast . Unary "FIX"
 fup :: (Fractional a, Integral b) => Expr a -> Expr b
 fup = Cast . Unary "FUP"
 
-fi :: (Integral a) => Expr a -> Expr Double
+fi :: (Integral a) => Expr a -> Expr RealT
 fi = Cast
 
 -- Evaluating type-save Exprs to untyped FExprs suited for generation gcode

@@ -1,9 +1,11 @@
 {-# LANGUAGE GADTs, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
 module CNC.HCode(module CNC.HCode,
-                 Cell, Expr, gRead, fix, fup, fi) where
+                 Cell, Expr, gRead, fix, fup, fi,
+                 toExpr) where
 
 import CNC.Expr
 import CNC.FanucMacro
+import CNC.Geometry(RealT)
 import CNC.VarMap
 
 import Prelude hiding(break)
@@ -240,22 +242,22 @@ comment cmt = gen $ FOps [FVoid] (Comment cmt)
 
 class CInstruction con where
   g :: Expr Int -> con ()
-  g_double :: Expr Double -> con ()
+  g_double :: Expr RealT -> con ()
   m :: Int -> con ()
   t :: Expr Int -> con ()
-  s :: Expr Double -> con ()
-  f :: Expr Double -> con ()
+  s :: Expr RealT -> con ()
+  f :: Expr RealT -> con ()
   d :: Expr Int -> con ()
   h :: Expr Int -> con ()
-  x :: Expr Double -> con ()
-  y :: Expr Double -> con ()
-  z :: Expr Double -> con ()
-  i :: Expr Double -> con ()
-  j :: Expr Double -> con ()
-  k :: Expr Double -> con ()
-  r :: Expr Double -> con ()
+  x :: Expr RealT -> con ()
+  y :: Expr RealT -> con ()
+  z :: Expr RealT -> con ()
+  i :: Expr RealT -> con ()
+  j :: Expr RealT -> con ()
+  k :: Expr RealT -> con ()
+  r :: Expr RealT -> con ()
   p :: Expr Int -> con ()
-  p_double :: Expr Double -> con ()
+  p_double :: Expr RealT -> con ()
   l :: Int -> con ()
 
 instance CInstruction FInstruction where
