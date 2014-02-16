@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
 module CNC.HCode(module CNC.HCode,
-                 Cell, Expr, gRead, fix, fup, fi,
+                 RealT, Cell, Expr, gRead, fix, fup, fi,
                  toExpr) where
 
 import CNC.Expr
@@ -242,7 +242,7 @@ comment cmt = gen $ FOps [FVoid] (Comment cmt)
 
 class CInstruction con where
   g :: Expr Int -> con ()
-  g_double :: Expr RealT -> con ()
+  g_real :: Expr RealT -> con ()
   m :: Int -> con ()
   t :: Expr Int -> con ()
   s :: Expr RealT -> con ()
@@ -257,12 +257,12 @@ class CInstruction con where
   k :: Expr RealT -> con ()
   r :: Expr RealT -> con ()
   p :: Expr Int -> con ()
-  p_double :: Expr RealT -> con ()
+  p_real :: Expr RealT -> con ()
   l :: Int -> con ()
 
 instance CInstruction FInstruction where
   g = FInstrE 'G' . eval
-  g_double = FInstrE 'G' . eval
+  g_real = FInstrE 'G' . eval
   m = check_diap 0 200 . FInstrI 'M'
   t = FInstrE 'T' . eval
   s = FInstrE 'S' . eval
