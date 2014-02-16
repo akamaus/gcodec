@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                gcodec
-version:             0.5.1
+version:             0.6
 synopsis:            A Haskell DSL for writing Fanuc Macro programs
 homepage:            https://github.com/akamaus/gcodec
 license:             BSD3
@@ -26,6 +26,7 @@ library
 
   exposed-modules:
                      CNC.AwePrelude
+                     CNC.Declarative
                      CNC.FInterpreter
                      CNC.FanucMacro
                      CNC.GInterpreter
@@ -37,6 +38,7 @@ library
                      CNC.AwePrelude.Eq
                      CNC.AwePrelude.Ord
                      CNC.Expr
+                     CNC.Figure
                      CNC.Geometry
                      CNC.VarMap
   hs-source-dirs:    src
