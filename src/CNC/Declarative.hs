@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
-module Declarative where
+module CNC.Declarative where
 
 import CNC.Geometry(RealT, eps)
 
@@ -49,6 +49,9 @@ type Constraint = UniConstraint PointInd
 
 mkLabels [''Figure]
 
+figure fig_m = let fig = S.execState fig_m empty_figure
+               in solveFigure fig
+
 -- Creates k new points
 declare_points k = do
   next <- LM.gets fNextPoint
@@ -84,7 +87,7 @@ solveConstraints points (c:cs) prev_cs shrinked = case c of -- process a single 
     (Just p1, Just p2) -> checkConstr
   Length pi1 pi2 len -> case (points ! pi1, points ! pi2) of
     (Nothing, Nothing) -> skipConstr
-    (Just pp1, Nothing) -> solveLength pp1 pi1 pi2 1 len
+    (Just p1, Nothing) -> solveLength p1 pi1 pi2 1 len
     (Nothing, Just p2) -> solveLength p2 pi2 pi1 (-1) len
     (Just p1, Just p2) -> checkConstr
   Angle pi1 pi2 a -> case (M.lookup pi1 points, M.lookup pi2 points) of -- only check these, they're used as part of Length constraints processing
@@ -95,7 +98,7 @@ solveConstraints points (c:cs) prev_cs shrinked = case c of -- process a single 
     checkConstr = checkEps (calcDiscrepancy pointConstr) (solveConstraints points cs prev_cs shrinked) ("disagreement while processing " ++ show c)
     skipConstr = solveConstraints points cs (c:prev_cs) shrinked
     solveDisp p ind d = solveConstraints (M.insert ind (Just $ p + d) points) cs prev_cs True
-    solveLength (p :: Pos) ind ind0 a_mult len = case findAngleConstr ind0 ind cs of
+    solveLength (p :: Pos) ind0 ind a_mult len = case findAngleConstr ind0 ind cs of
       Nothing -> skipConstr
       Just angle -> solveConstraints (M.insert ind (Just $ p + mkPolar len (angle * a_mult)) points)
                                      (deleteAngleConstr ind0 ind cs) prev_cs True
@@ -131,5 +134,9 @@ findAngleConstr ind1 ind2 (c:cs) = case c of
   _ -> findAngleConstr ind1 ind2 cs
 
 -- deletes first angle constraint
-deleteAngleConstr ind1 ind2 = deleteBy (\(Angle d1 d2 _) (Angle i1 i2 _) -> (i1, i2) == (d2,d1) || (i2, i1) == (d1,d2))
+deleteAngleConstr ind1 ind2 = deleteBy findAngle
                               (Angle ind1 ind2 undefined)
+  where findAngle (Angle d1 d2 _) c2 =
+          case c2 of
+            (Angle i1 i2 _) -> (i1, i2) == (d2,d1) || (i2, i1) == (d1,d2)
+            _ -> False
