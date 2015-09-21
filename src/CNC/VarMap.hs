@@ -12,7 +12,7 @@ import Control.Category
 import Control.Monad.State(MonadState)
 
 import Data.Label
-import Data.Label.PureM
+import Data.Label.Monadic
 
 import Text.Printf
 

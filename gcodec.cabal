@@ -20,7 +20,7 @@ library
                      blaze-builder >= 0.3,
                      bytestring >= 0.10,
                      containers > 0.5,
-                     fclabels >= 1,
+                     fclabels >= 2,
                      text >= 0.11,
                      mtl
 
@@ -51,7 +51,7 @@ executable GEmulator
                      blaze-builder >= 0.3,
                      bytestring >= 0.10,
                      containers > 0.5,
-                     fclabels >= 1 && < 2,
+                     fclabels >= 2,
                      mtl >= 2,
                      text >= 0.11
 
@@ -62,7 +62,7 @@ Test-suite Test-CNC
                      blaze-builder >= 0.3,
                      bytestring >= 0.10,
                      containers > 0.5,
-                     fclabels >= 1,
+                     fclabels >= 2,
                      text >= 0.11,
                      mtl
 

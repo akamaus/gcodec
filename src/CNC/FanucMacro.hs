@@ -11,7 +11,7 @@ import Data.List
 import Data.Maybe
 import Data.String
 import Data.Word
-import Text.Printf
+import Text.Printf(printf)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy.Char8 as LS
 

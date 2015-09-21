@@ -20,7 +20,7 @@ import Data.Word
 import System.IO
 import Text.Printf
 import qualified Control.Monad.RWS as RWS
-import qualified Data.Label.PureM as L
+import qualified Data.Label.Monadic as L
 import qualified Data.Set as S
 
 type CompileResults = ([Warning],[Error],FOperator)

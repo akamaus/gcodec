@@ -12,7 +12,7 @@ import Data.Map((!))
 import Data.Maybe(fromJust, isNothing)
 import Data.Label
 import Data.List(deleteBy,sort)
-import qualified Data.Label.PureM as LM
+import qualified Data.Label.Monadic as LM
 import qualified Control.Monad.State as S
 import Data.Complex
 import Text.Printf
